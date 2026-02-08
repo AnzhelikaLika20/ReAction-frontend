@@ -1,0 +1,178 @@
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 2rem 0;
+}
+
+.section {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+}
+
+.sectionTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sectionDescription {
+  color: #718096;
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+}
+
+.checkButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.checkButton:hover {
+  background: #5568d3;
+}
+
+.checkButton:disabled {
+  background: #cbd5e0;
+  cursor: not-allowed;
+}
+
+.status {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.statusLoading {
+  background: #bee3f8;
+  color: #2c5282;
+}
+
+.statusSuccess {
+  background: #c6f6d5;
+  color: #22543d;
+}
+
+.statusError {
+  background: #fed7d7;
+  color: #c53030;
+}
+
+.profileInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.profileField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.profileLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #718096;
+}
+
+.profileValue {
+  font-size: 1rem;
+  color: #2d3748;
+}
+
+.logoutButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #e53e3e;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 1rem;
+}
+
+.logoutButton:hover {
+  background: #c53030;
+}
+
+.remindersList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.reminderItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: #f7fafc;
+  border-radius: 8px;
+}
+
+.downloadButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #48bb78;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.downloadButton:hover {
+  background: #38a169;
+}
+
+@media (max-width: 640px) {
+  .checkButton,
+  .logoutButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .reminderItem {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+
+  .downloadButton {
+    width: 100%;
+    justify-content: center;
+  }
+}

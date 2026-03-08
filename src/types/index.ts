@@ -34,8 +34,9 @@ export interface Scenario {
 export interface Chat {
   id: number;
   name: string;
-  type: "private" | "group" | "channel";
+  type: 'private' | 'group' | 'channel';
   is_selected: boolean;
+  message_count?: number;
 }
 
 export interface ReminderFile {

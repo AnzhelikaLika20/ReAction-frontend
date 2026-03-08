@@ -66,6 +66,10 @@ export default function Auth() {
     try {
       await authService.getToken(phone);
       await authService.initTelegramAuth();
+
+      const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+      await sleep(10_000);
+      
       await authService.sendPhone(phone);
 
       setStep("code");

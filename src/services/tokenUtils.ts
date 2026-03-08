@@ -18,3 +18,18 @@ export function isTokenExpired(token: string): boolean {
     return true;
   }
 }
+
+export function getTokenUserId(token: string): string | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return null;
+    }
+
+    const payload = JSON.parse(atob(parts[1]));
+    return payload.user_id || payload.sub || payload.phone || null;
+  } catch (error) {
+    console.error('Failed to parse token:', error);
+    return null;
+  }
+}

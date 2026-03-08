@@ -33,6 +33,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (status.auth_state === "ready") {
           // const currentUser = await authService.getCurrentUser();
+
+          // TDOD: check that auth_phone in localStorage equals to phone of current user
+
           // setUser(currentUser);
           setIsAuthenticated(true);
         } else {

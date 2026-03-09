@@ -20,11 +20,12 @@ export const authService = {
 
   async initTelegramAuth(): Promise<void> {
     await httpClient.post("/auth/telegram/init");
+    await this.waitForStatusChange("wait_phone", 5, 1000);
   },
 
   async sendPhone(phone: string): Promise<void> {
     localStorage.setItem("auth_phone", phone);
-    await httpClient.post("/auth/telegram/phone", { phone: phone });
+    await httpClient.post("/auth/telegram/phone", { phone_number: phone });
     await this.waitForStatusChange("wait_code", 5, 1000);
   },
 
@@ -63,7 +64,9 @@ export const authService = {
       await new Promise((resolve) => setTimeout(resolve, delayMs));
 
       const status = await this.getSessionStatus();
+      console.log("keke " + status.auth_state);
       if (expectedStatuses.includes(status.auth_state)) {
+        console.log("dede " + expectedStatuses);
         return status;
       }
     }

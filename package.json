@@ -11,7 +11,9 @@
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,css,scss,json,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,css,scss,json,md}\"",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "deploy": "./deploy.sh",
+    "deploy:clean": "./deploy.sh --clean"
   },
   "dependencies": {
     "lucide-react": "^0.562.0",

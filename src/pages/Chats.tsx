@@ -1,12 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
-import { User, Users, Radio, Search } from 'lucide-react';
-import { chatService } from '../services/chatService';
-import type { Chat } from '../types';
-import styles from './Chats.module.css';
+import { useState, useEffect, useMemo } from "react";
+import { User, Users, Radio, Search } from "lucide-react";
+import { chatService } from "../services/chatService";
+import type { Chat } from "../types";
+import styles from "./Chats.module.css";
 
 export default function Chats() {
   const [chats, setChats] = useState<Chat[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [analyzeAll, setAnalyzeAll] = useState(false);
   const [loading, setLoading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -22,7 +22,7 @@ export default function Chats() {
       const allSelected = data.every((chat) => chat.is_selected);
       setAnalyzeAll(allSelected);
     } catch (error) {
-      console.error('Failed to load chats:', error);
+      console.error("Failed to load chats:", error);
     }
   };
 
@@ -34,12 +34,14 @@ export default function Chats() {
 
   const handleToggleChat = (chatId: number, checked: boolean) => {
     setChats(
-      chats.map((chat) => (chat.id === chatId ? { ...chat, is_selected: checked } : chat))
+      chats.map((chat) =>
+        chat.id === chatId ? { ...chat, is_selected: checked } : chat,
+      ),
     );
     setHasChanges(true);
 
     const updatedChats = chats.map((chat) =>
-      chat.id === chatId ? { ...chat, is_selected: checked } : chat
+      chat.id === chatId ? { ...chat, is_selected: checked } : chat,
     );
     const allSelected = updatedChats.every((chat) => chat.is_selected);
     setAnalyzeAll(allSelected);
@@ -48,53 +50,55 @@ export default function Chats() {
   const handleSave = async () => {
     setLoading(true);
     try {
-      const selectedIds = chats.filter((chat) => chat.is_selected).map((chat) => chat.id);
+      const selectedIds = chats
+        .filter((chat) => chat.is_selected)
+        .map((chat) => chat.id);
       await chatService.updateSelection(selectedIds);
       setHasChanges(false);
-      alert('Настройки сохранены');
+      alert("Настройки сохранены");
     } catch (error) {
-      console.error('Failed to save chat selection:', error);
-      alert('Ошибка при сохранении настроек');
+      console.error("Failed to save chat selection:", error);
+      alert("Ошибка при сохранении настроек");
     } finally {
       setLoading(false);
     }
   };
 
-  const getChatIcon = (type: Chat['type']) => {
+  const getChatIcon = (type: Chat["type"]) => {
     switch (type) {
-      case 'private':
+      case "private":
         return <User size={20} />;
-      case 'group':
+      case "group":
         return <Users size={20} />;
-      case 'channel':
+      case "channel":
         return <Radio size={20} />;
     }
   };
 
-  const getChatTypeLabel = (type: Chat['type']) => {
+  const getChatTypeLabel = (type: Chat["type"]) => {
     switch (type) {
-      case 'private':
-        return 'Личный чат';
-      case 'group':
-        return 'Группа';
-      case 'channel':
-        return 'Канал';
+      case "private":
+        return "Личный чат";
+      case "group":
+        return "Группа";
+      case "channel":
+        return "Канал";
     }
   };
 
-  const getChatIconClass = (type: Chat['type']) => {
+  const getChatIconClass = (type: Chat["type"]) => {
     switch (type) {
-      case 'private':
+      case "private":
         return styles.chatIconPrivate;
-      case 'group':
+      case "group":
         return styles.chatIconGroup;
-      case 'channel':
+      case "channel":
         return styles.chatIconChannel;
     }
   };
 
   const formatMessageCount = (count?: number) => {
-    if (!count) return '';
+    if (!count) return "";
     if (count >= 1000) {
       return `${(count / 1000).toFixed(1)}k сообщений`;
     }
@@ -180,15 +184,21 @@ export default function Chats() {
                       type="checkbox"
                       className={styles.checkbox}
                       checked={chat.is_selected}
-                      onChange={(e) => handleToggleChat(chat.id, e.target.checked)}
+                      onChange={(e) =>
+                        handleToggleChat(chat.id, e.target.checked)
+                      }
                     />
-                    <div className={`${styles.chatIcon} ${getChatIconClass(chat.type)}`}>
+                    <div
+                      className={`${styles.chatIcon} ${getChatIconClass(chat.type)}`}
+                    >
                       {getChatIcon(chat.type)}
                     </div>
                     <div className={styles.chatInfo}>
                       <h3 className={styles.chatName}>{chat.name}</h3>
                       <div className={styles.chatMeta}>
-                        <span className={styles.chatType}>{getChatTypeLabel(chat.type)}</span>
+                        <span className={styles.chatType}>
+                          {getChatTypeLabel(chat.type)}
+                        </span>
                         {chat.message_count && (
                           <>
                             <span className={styles.chatMetaSeparator}>•</span>
@@ -208,7 +218,7 @@ export default function Chats() {
           {otherChats.length > 0 && (
             <div className={styles.section}>
               <h2 className={styles.sectionTitle}>
-                {searchQuery ? 'Результаты поиска' : 'Все чаты'}
+                {searchQuery ? "Результаты поиска" : "Все чаты"}
               </h2>
               <div className={styles.chatList}>
                 {otherChats.map((chat) => (
@@ -217,15 +227,21 @@ export default function Chats() {
                       type="checkbox"
                       className={styles.checkbox}
                       checked={chat.is_selected}
-                      onChange={(e) => handleToggleChat(chat.id, e.target.checked)}
+                      onChange={(e) =>
+                        handleToggleChat(chat.id, e.target.checked)
+                      }
                     />
-                    <div className={`${styles.chatIcon} ${getChatIconClass(chat.type)}`}>
+                    <div
+                      className={`${styles.chatIcon} ${getChatIconClass(chat.type)}`}
+                    >
                       {getChatIcon(chat.type)}
                     </div>
                     <div className={styles.chatInfo}>
                       <h3 className={styles.chatName}>{chat.name}</h3>
                       <div className={styles.chatMeta}>
-                        <span className={styles.chatType}>{getChatTypeLabel(chat.type)}</span>
+                        <span className={styles.chatType}>
+                          {getChatTypeLabel(chat.type)}
+                        </span>
                         {chat.message_count && (
                           <>
                             <span className={styles.chatMetaSeparator}>•</span>
@@ -248,7 +264,7 @@ export default function Chats() {
               onClick={handleSave}
               disabled={loading || !hasChanges}
             >
-              {loading ? 'Сохранение...' : 'Сохранить изменения'}
+              {loading ? "Сохранение..." : "Сохранить изменения"}
             </button>
           </div>
         </>

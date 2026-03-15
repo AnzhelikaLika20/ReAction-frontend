@@ -67,9 +67,10 @@ export default function Auth() {
       await authService.getToken(phone);
       await authService.initTelegramAuth();
 
-      const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
-      await sleep(10_000);
-      
+      const sleep = (ms: number) =>
+        new Promise<void>((resolve) => setTimeout(resolve, ms));
+      await sleep(1_000);
+
       await authService.sendPhone(phone);
 
       setStep("code");
@@ -97,6 +98,11 @@ export default function Auth() {
 
     try {
       await authService.sendCode(code);
+
+      const sleep = (ms: number) =>
+        new Promise<void>((resolve) => setTimeout(resolve, ms));
+      await sleep(2_000);
+
       const status = await authService.getSessionStatus();
 
       if (status.auth_state === "wait_password") {

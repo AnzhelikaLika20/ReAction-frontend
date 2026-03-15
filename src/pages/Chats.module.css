@@ -1,6 +1,8 @@
 .container {
   max-width: 1200px;
   margin: 0 auto;
+  min-width: 0;
+  width: 100%;
 }
 
 .header {
@@ -31,6 +33,8 @@
 .searchContainer {
   position: relative;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   z-index: 1;
 }
 
@@ -45,7 +49,9 @@
 }
 
 .searchInput {
+  box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
   padding: 0.875rem 1rem 0.875rem 3rem;
   background: white;
   border: 2px solid #e2e8f0;
@@ -287,22 +293,9 @@
 }
 
 @media (min-width: 768px) {
-  .controls {
-    flex-direction: row;
-    align-items: flex-start;
-  }
-
-  .searchContainer {
-    flex: 1;
-  }
-
-  .globalToggle {
-    flex-shrink: 0;
-    min-width: 300px;
-  }
-
   .actions {
     margin: 2rem 0 0;
     position: static;
   }
 }
+

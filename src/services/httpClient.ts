@@ -1,3 +1,5 @@
+import { getTokenUserId } from "./tokenUtils";
+
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "https://api.re-action.site";
 
@@ -8,7 +10,7 @@ export class HttpClient {
     this.baseUrl = baseUrl;
   }
 
-  private getHeaders(): HeadersInit {
+  public getHeaders(): HeadersInit {
     const headers: HeadersInit = {
       "Content-Type": "application/json",
     };
@@ -16,6 +18,7 @@ export class HttpClient {
     const token = localStorage.getItem("jwt_token");
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
+      headers["X-Session-ID"] = getTokenUserId(token) || "";
     }
 
     return headers;
@@ -99,6 +102,6 @@ export class HttpClient {
 
     return response.blob();
   }
-}
+  }
 
 export const httpClient = new HttpClient(API_BASE_URL);

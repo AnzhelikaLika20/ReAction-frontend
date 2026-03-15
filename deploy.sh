@@ -111,6 +111,7 @@ deploy() {
     
     print_info "Загрузка статических файлов (кеширование на 1 год)..."
     aws s3 sync "$DIST_DIR" "s3://$BUCKET_NAME" \
+        --acl public-read \
         --endpoint-url "$ENDPOINT_URL" \
         --delete \
         --cache-control "public, max-age=31536000, immutable" \
@@ -122,6 +123,7 @@ deploy() {
     
     print_info "Загрузка index.html и JSON (без кеширования)..."
     aws s3 sync "$DIST_DIR" "s3://$BUCKET_NAME" \
+        --acl public-read \
         --endpoint-url "$ENDPOINT_URL" \
         --cache-control "no-cache, no-store, must-revalidate" \
         --exclude "*" \

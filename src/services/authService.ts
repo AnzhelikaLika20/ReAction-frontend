@@ -64,9 +64,7 @@ export const authService = {
       await new Promise((resolve) => setTimeout(resolve, delayMs));
 
       const status = await this.getSessionStatus();
-      console.log("keke " + status.auth_state);
       if (expectedStatuses.includes(status.auth_state)) {
-        console.log("dede " + expectedStatuses);
         return status;
       }
     }

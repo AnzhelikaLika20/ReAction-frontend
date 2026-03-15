@@ -1,9 +1,6 @@
 import { httpClient } from "./httpClient";
 import type { AuthTokenResponse, SessionState, User } from "../types";
-import { mockUser } from "../mocks/data";
 import { isTokenExpired, getTokenUserId } from "./tokenUtils";
-
-const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === "true";
 
 export const authService = {
   async getToken(phone: string): Promise<string> {
@@ -73,22 +70,12 @@ export const authService = {
   },
 
   async logout(): Promise<void> {
-    if (USE_MOCKS) {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      localStorage.removeItem("jwt_token");
-      localStorage.removeItem("auth_phone");
-      return;
-    }
     await httpClient.delete("/auth/session");
     localStorage.removeItem("jwt_token");
     localStorage.removeItem("auth_phone");
   },
 
   async getCurrentUser(): Promise<User> {
-    if (USE_MOCKS) {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      return mockUser;
-    }
     return httpClient.get<User>("/users/me");
   },
 

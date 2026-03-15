@@ -42,3 +42,7 @@ export interface Chat {
 export interface ReminderFile {
   file_id: string;
 }
+
+export interface CalendarURLResponse {
+  url: string;
+}

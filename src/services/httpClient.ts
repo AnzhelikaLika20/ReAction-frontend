@@ -102,6 +102,6 @@ export class HttpClient {
 
     return response.blob();
   }
-  }
+}
 
 export const httpClient = new HttpClient(API_BASE_URL);

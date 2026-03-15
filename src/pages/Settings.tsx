@@ -72,8 +72,9 @@ export default function Settings() {
         {!calendarUrlLoading && !calendarUrlError && calendarUrl && (
           <>
             <p className={styles.calendarHint}>
-              Добавьте подписной календарь по этой ссылке в ваше календарное приложение, чтобы
-              получать видеть события  Re:Action и получать уведомления.
+              Добавьте подписной календарь по этой ссылке в ваше календарное
+              приложение, чтобы получать видеть события Re:Action и получать
+              уведомления.
             </p>
             <button
               type="button"

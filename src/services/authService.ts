@@ -2,17 +2,27 @@ import { httpClient } from "./httpClient";
 import type { AuthTokenResponse, SessionState, User } from "../types";
 import { isTokenExpired, getTokenUserId } from "./tokenUtils";
 
+function persistToken(token: string) {
+  localStorage.setItem("jwt_token", token);
+}
+
 export const authService = {
-  async getToken(phone: string): Promise<string> {
-    const response = await httpClient.post<AuthTokenResponse>("/auth/token", {
-      phone_number: phone,
+  async register(email: string, password: string): Promise<string> {
+    const response = await httpClient.post<AuthTokenResponse>(
+      "/auth/register",
+      { email, password },
+    );
+    persistToken(response.token);
+    return response.token;
+  },
+
+  async login(email: string, password: string): Promise<string> {
+    const response = await httpClient.post<AuthTokenResponse>("/auth/login", {
+      email,
+      password,
     });
-    const token = response.token;
-
-    localStorage.setItem("jwt_token", token);
-    localStorage.setItem("auth_phone", phone);
-
-    return token;
+    persistToken(response.token);
+    return response.token;
   },
 
   async initTelegramAuth(): Promise<void> {
@@ -21,7 +31,6 @@ export const authService = {
   },
 
   async sendPhone(phone: string): Promise<void> {
-    localStorage.setItem("auth_phone", phone);
     await httpClient.post("/auth/telegram/phone", { phone_number: phone });
     await this.waitForStatusChange("wait_code", 5, 1000);
   },
@@ -38,7 +47,7 @@ export const authService = {
     }
   },
 
-  async sendPassword(password: string): Promise<void> {
+  async sendTelegramPassword(password: string): Promise<void> {
     await httpClient.post("/auth/telegram/password", { password: password });
     await this.waitForStatusChange("ready", 5, 1000);
   },
@@ -70,9 +79,12 @@ export const authService = {
   },
 
   async logout(): Promise<void> {
-    await httpClient.delete("/auth/session");
+    try {
+      await httpClient.delete("/auth/session");
+    } catch {
+      /* ignore */
+    }
     localStorage.removeItem("jwt_token");
-    localStorage.removeItem("auth_phone");
   },
 
   async getCurrentUser(): Promise<User> {
@@ -87,40 +99,15 @@ export const authService = {
 
     if (isTokenExpired(token)) {
       localStorage.removeItem("jwt_token");
-      localStorage.removeItem("auth_phone");
       return false;
     }
 
     return true;
   },
 
-  validateTokenForPhone(phone: string): boolean {
+  getCurrentUserId(): string | null {
     const token = localStorage.getItem("jwt_token");
-    const storedPhone = localStorage.getItem("auth_phone");
-
-    if (!token || !storedPhone) {
-      return false;
-    }
-
-    if (storedPhone !== phone) {
-      localStorage.removeItem("jwt_token");
-      localStorage.removeItem("auth_phone");
-      return false;
-    }
-
-    if (isTokenExpired(token)) {
-      localStorage.removeItem("jwt_token");
-      localStorage.removeItem("auth_phone");
-      return false;
-    }
-
-    const tokenUserId = getTokenUserId(token);
-    if (tokenUserId && tokenUserId !== phone && tokenUserId !== storedPhone) {
-      localStorage.removeItem("jwt_token");
-      localStorage.removeItem("auth_phone");
-      return false;
-    }
-
-    return true;
+    if (!token) return null;
+    return getTokenUserId(token);
   },
 };

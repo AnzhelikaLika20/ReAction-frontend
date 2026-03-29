@@ -1,150 +1,45 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
 import styles from "./Auth.module.css";
 
+type Mode = "login" | "register";
+
 export default function Auth() {
   const navigate = useNavigate();
   const { checkAuth } = useAuth();
 
-  const [step, setStep] = useState<"phone" | "code" | "password" | "loading">(
-    "loading",
-  );
-  const [phone, setPhone] = useState("");
-  const [code, setCode] = useState("");
+  const [mode, setMode] = useState<Mode>("login");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    checkSessionStatus();
-  }, []);
-
-  const checkSessionStatus = async () => {
-    try {
-      const hasToken = authService.isAuthenticated();
-
-      if (!hasToken) {
-        setStep("phone");
-        return;
-      }
-
-      const status = await authService.getSessionStatus();
-
-      switch (status.auth_state) {
-        case "ready":
-          navigate("/");
-          break;
-        case "inited":
-          setStep("phone");
-          break;
-        case "wait_phone":
-          setStep("phone");
-          break;
-        case "wait_code":
-          setPhone(status.phone || "");
-          setStep("code");
-          break;
-        case "wait_password":
-          setStep("password");
-          break;
-        default:
-          setStep("phone");
-      }
-    } catch (err) {
-      console.error("Session check failed:", err);
-      setStep("phone");
-    }
-  };
-
-  const handlePhoneSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      await authService.getToken(phone);
-      await authService.initTelegramAuth();
-
-      const sleep = (ms: number) =>
-        new Promise<void>((resolve) => setTimeout(resolve, ms));
-      await sleep(1_000);
-
-      await authService.sendPhone(phone);
-
-      setStep("code");
-    } catch (err) {
-      const status = await authService.getSessionStatus();
-
-      if (status.auth_state === "ready") {
-        console.log("ready already");
-        await checkAuth();
-        navigate("/");
-        return;
+      if (mode === "register") {
+        await authService.register(email, password);
+      } else {
+        await authService.login(email, password);
       }
-
-      setError("Ошибка отправки номера телефона");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCodeSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    try {
-      await authService.sendCode(code);
-
-      const sleep = (ms: number) =>
-        new Promise<void>((resolve) => setTimeout(resolve, ms));
-      await sleep(2_000);
-
-      const status = await authService.getSessionStatus();
-
-      if (status.auth_state === "wait_password") {
-        setStep("password");
-      } else if (status.auth_state === "ready") {
-        await checkAuth();
-        navigate("/");
-      }
-    } catch (err) {
-      setError("Неверный код");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    try {
-      await authService.sendPassword(password);
       await checkAuth();
       navigate("/");
     } catch (err) {
-      setError("Неверный пароль");
+      setError(
+        mode === "register"
+          ? "Не удалось зарегистрироваться. Возможно, email уже занят."
+          : "Неверный email или пароль.",
+      );
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
-
-  if (step === "loading") {
-    return (
-      <div className={styles.container}>
-        <div className={styles.card}>
-          <div className={styles.loading}>Загрузка...</div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={styles.container}>
@@ -153,112 +48,94 @@ export default function Auth() {
           <h1 className={styles.logoText}>Re:Action</h1>
         </div>
 
-        {step === "phone" && (
-          <>
-            <h2 className={styles.title}>Вход через Telegram</h2>
-            <p className={styles.subtitle}>Введите номер телефона</p>
+        <h2 className={styles.title}>
+          {mode === "login" ? "Вход" : "Регистрация"}
+        </h2>
+        <p className={styles.subtitle}>
+          {mode === "login"
+            ? "Войдите по email и паролю"
+            : "Создайте аккаунт, затем подключите Telegram в настройках"}
+        </p>
 
-            <form onSubmit={handlePhoneSubmit} className={styles.form}>
-              <div className={styles.formGroup}>
-                <label htmlFor="phone" className={styles.label}>
-                  Номер телефона
-                </label>
-                <input
-                  id="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+79001234567"
-                  className={styles.input}
-                  required
-                  disabled={loading}
-                />
-              </div>
+        <div className={styles.tabRow}>
+          <button
+            type="button"
+            className={`${styles.tab} ${mode === "login" ? styles.tabActive : ""}`}
+            onClick={() => {
+              setMode("login");
+              setError("");
+            }}
+          >
+            Вход
+          </button>
+          <button
+            type="button"
+            className={`${styles.tab} ${mode === "register" ? styles.tabActive : ""}`}
+            onClick={() => {
+              setMode("register");
+              setError("");
+            }}
+          >
+            Регистрация
+          </button>
+        </div>
 
-              {error && <div className={styles.error}>{error}</div>}
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <div className={styles.formGroup}>
+            <label htmlFor="email" className={styles.label}>
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              className={styles.input}
+              required
+              autoComplete="email"
+              disabled={loading}
+            />
+          </div>
 
-              <button
-                type="submit"
-                className={styles.button}
-                disabled={loading}
-              >
-                {loading ? "Отправка..." : "Получить код"}
-              </button>
-            </form>
-          </>
-        )}
+          <div className={styles.formGroup}>
+            <label htmlFor="password" className={styles.label}>
+              Пароль
+              {mode === "register" && (
+                <span className={styles.hint}> (минимум 8 символов)</span>
+              )}
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className={styles.input}
+              required
+              minLength={mode === "register" ? 8 : undefined}
+              autoComplete={
+                mode === "register" ? "new-password" : "current-password"
+              }
+              disabled={loading}
+            />
+          </div>
 
-        {step === "code" && (
-          <>
-            <h2 className={styles.title}>Введите код</h2>
-            <p className={styles.subtitle}>Код отправлен на {phone}</p>
+          {error && <div className={styles.error}>{error}</div>}
 
-            <form onSubmit={handleCodeSubmit} className={styles.form}>
-              <div className={styles.formGroup}>
-                <label htmlFor="code" className={styles.label}>
-                  Код подтверждения
-                </label>
-                <input
-                  id="code"
-                  type="text"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder="12345"
-                  className={styles.input}
-                  required
-                  disabled={loading}
-                  autoFocus
-                />
-              </div>
+          <button type="submit" className={styles.button} disabled={loading}>
+            {loading
+              ? "Подождите..."
+              : mode === "login"
+                ? "Войти"
+                : "Зарегистрироваться"}
+          </button>
+        </form>
 
-              {error && <div className={styles.error}>{error}</div>}
-
-              <button
-                type="submit"
-                className={styles.button}
-                disabled={loading}
-              >
-                {loading ? "Проверка..." : "Отправить код"}
-              </button>
-            </form>
-          </>
-        )}
-
-        {step === "password" && (
-          <>
-            <h2 className={styles.title}>Двухфакторная аутентификация</h2>
-            <p className={styles.subtitle}>Введите пароль 2FA</p>
-
-            <form onSubmit={handlePasswordSubmit} className={styles.form}>
-              <div className={styles.formGroup}>
-                <label htmlFor="password" className={styles.label}>
-                  Пароль
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Введите пароль"
-                  className={styles.input}
-                  required
-                  disabled={loading}
-                  autoFocus
-                />
-              </div>
-
-              {error && <div className={styles.error}>{error}</div>}
-
-              <button
-                type="submit"
-                className={styles.button}
-                disabled={loading}
-              >
-                {loading ? "Проверка..." : "Подтвердить"}
-              </button>
-            </form>
-          </>
-        )}
+        <p className={styles.footerHint}>
+          После входа подключите Telegram в разделе «Настройки», чтобы работать с
+          чатами.
+        </p>
       </div>
     </div>
   );

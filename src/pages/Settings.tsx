@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { User, LogOut, Calendar, Copy } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { User, LogOut, Calendar, Copy, MessageSquare } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { reminderService } from "../services/reminderService";
 import styles from "./Settings.module.css";
@@ -91,11 +91,32 @@ export default function Settings() {
 
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>
+          <MessageSquare size={24} />
+          Мессенджеры
+        </h2>
+        <p className={styles.calendarHint}>
+          Подключите Telegram, чтобы загружать список чатов и получать события
+          из выбранных диалогов.
+        </p>
+        <Link to="/connect-telegram" className={styles.copyButton}>
+          Подключить Telegram
+        </Link>
+      </div>
+
+      <div className={styles.section}>
+        <h2 className={styles.sectionTitle}>
           <User size={24} />
           Профиль
         </h2>
 
         <div className={styles.profileInfo}>
+          {user?.email && (
+            <div className={styles.profileField}>
+              <div className={styles.profileLabel}>Email</div>
+              <div className={styles.profileValue}>{user.email}</div>
+            </div>
+          )}
+
           {user?.first_name && (
             <div className={styles.profileField}>
               <div className={styles.profileLabel}>Имя</div>
@@ -113,9 +134,9 @@ export default function Settings() {
           )}
 
           <div className={styles.profileField}>
-            <div className={styles.profileLabel}>Номер телефона</div>
+            <div className={styles.profileLabel}>Телефон (Telegram)</div>
             <div className={styles.profileValue}>
-              {user?.phone || "Не указан"}
+              {user?.phone_number || user?.phone || "Не подключён"}
             </div>
           </div>
         </div>

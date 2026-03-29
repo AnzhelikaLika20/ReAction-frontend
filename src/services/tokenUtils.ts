@@ -27,7 +27,13 @@ export function getTokenUserId(token: string): string | null {
     }
 
     const payload = JSON.parse(atob(parts[1]));
-    return payload.user_id || payload.sub || payload.phone || null;
+    if (payload.user_id) {
+      return payload.user_id as string;
+    }
+    if (payload.sub) {
+      return payload.sub as string;
+    }
+    return null;
   } catch (error) {
     console.error("Failed to parse token:", error);
     return null;

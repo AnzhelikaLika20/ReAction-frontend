@@ -27,26 +27,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      if (authService.isAuthenticated()) {
-        const status = await authService.getSessionStatus();
-        setSessionState(status);
-
-        if (status.auth_state === "ready") {
-          // const currentUser = await authService.getCurrentUser();
-
-          // TDOD: check that auth_phone in localStorage equals to phone of current user
-
-          // setUser(currentUser);
-          setIsAuthenticated(true);
-        } else {
-          setIsAuthenticated(false);
-          setUser(null);
-        }
-      } else {
+      if (!authService.isAuthenticated()) {
         setIsAuthenticated(false);
         setUser(null);
         setSessionState(null);
+        return;
       }
+
+      const currentUser = await authService.getCurrentUser();
+      setUser(currentUser);
+
+      try {
+        const status = await authService.getSessionStatus();
+        setSessionState(status);
+      } catch {
+        setSessionState({ auth_state: "unknown" });
+      }
+
+      setIsAuthenticated(true);
     } catch (error) {
       console.error("Auth check failed:", error);
       setIsAuthenticated(false);

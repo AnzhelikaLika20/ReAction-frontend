@@ -3,6 +3,7 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import MainLayout from "./components/MainLayout";
 import Auth from "./pages/Auth";
+import ConnectTelegram from "./pages/ConnectTelegram";
 import Scenarios from "./pages/Scenarios";
 import Chats from "./pages/Chats";
 import Settings from "./pages/Settings";
@@ -26,6 +27,7 @@ function App() {
             <Route path="scenarios" element={<Scenarios />} />
             <Route path="chats" element={<Chats />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="connect-telegram" element={<ConnectTelegram />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

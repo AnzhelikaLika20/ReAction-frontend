@@ -1,6 +1,7 @@
 export interface User {
   id: string;
-  phone: string;
+  email?: string;
+  phone_number?: string;
   first_name?: string;
   last_name?: string;
   username?: string;
@@ -37,6 +38,14 @@ export interface Chat {
   type: "private" | "group" | "channel";
   is_selected: boolean;
   message_count?: number;
+}
+
+export interface MessengerAccount {
+  id: string;
+  provider: string;
+  label?: string;
+  connection_status: "pending" | "connected" | string;
+  is_active_for_session: boolean;
 }
 
 export interface ReminderFile {

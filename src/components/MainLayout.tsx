@@ -11,6 +11,9 @@ export default function MainLayout() {
     if (user.first_name) {
       return user.first_name[0].toUpperCase();
     }
+    if (user.email) {
+      return user.email[0].toUpperCase();
+    }
     return "U";
   };
 
@@ -25,7 +28,10 @@ export default function MainLayout() {
     if (user.username) {
       return user.username;
     }
-    return user.phone;
+    if (user.email) {
+      return user.email;
+    }
+    return user.phone_number || "Пользователь";
   };
 
   return (

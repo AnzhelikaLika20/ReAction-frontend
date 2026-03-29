@@ -3,7 +3,26 @@ import { useNavigate, Link } from "react-router-dom";
 import { User, LogOut, Calendar, Copy, MessageSquare } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { reminderService } from "../services/reminderService";
+import { messengerService } from "../services/messengerService";
+import type { MessengerAccount } from "../types";
 import styles from "./Settings.module.css";
+
+function messengerStatusLabel(status: string): string {
+  switch (status) {
+    case "connected":
+      return "Подключён";
+    case "pending":
+      return "Ожидание подключения";
+    default:
+      return status;
+  }
+}
+
+function messengerTitle(a: MessengerAccount): string {
+  const prov = a.provider === "telegram" ? "Telegram" : a.provider;
+  const lbl = (a.label && a.label.trim()) || "номер не указан";
+  return `${prov} · ${lbl}`;
+}
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -13,6 +32,26 @@ export default function Settings() {
   const [calendarUrlLoading, setCalendarUrlLoading] = useState(true);
   const [calendarUrlError, setCalendarUrlError] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState(false);
+  const [messengerAccounts, setMessengerAccounts] = useState<MessengerAccount[]>(
+    [],
+  );
+  const [messengerLoading, setMessengerLoading] = useState(true);
+  const [messengerError, setMessengerError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadMessengers = async () => {
+      try {
+        setMessengerError(null);
+        const list = await messengerService.list();
+        setMessengerAccounts(list);
+      } catch {
+        setMessengerError("Не удалось загрузить список аккаунтов");
+      } finally {
+        setMessengerLoading(false);
+      }
+    };
+    loadMessengers();
+  }, []);
 
   useEffect(() => {
     const loadCalendarUrl = async () => {
@@ -96,8 +135,51 @@ export default function Settings() {
         </h2>
         <p className={styles.calendarHint}>
           Подключите Telegram, чтобы загружать список чатов и получать события
-          из выбранных диалогов.
+          из выбранных диалогов. Несколько аккаунтов можно настроить по очереди.
         </p>
+        {messengerLoading && (
+          <p className={styles.calendarLoading}>Загрузка аккаунтов...</p>
+        )}
+        {messengerError && (
+          <div className={`${styles.status} ${styles.statusError}`}>
+            {messengerError}
+          </div>
+        )}
+        {!messengerLoading && !messengerError && messengerAccounts.length === 0 && (
+          <p className={styles.messengerEmpty}>Пока нет аккаунтов мессенджеров.</p>
+        )}
+        {!messengerLoading && !messengerError && messengerAccounts.length > 0 && (
+          <ul className={styles.messengerList}>
+            {messengerAccounts.map((a) => (
+              <li key={a.id} className={styles.messengerCard}>
+                <div className={styles.messengerCardMain}>
+                  <div className={styles.messengerCardTitle}>
+                    {messengerTitle(a)}
+                  </div>
+                  <div className={styles.messengerCardMeta}>
+                    ID: {a.id.slice(0, 8)}…
+                  </div>
+                </div>
+                <div className={styles.messengerBadges}>
+                  <span
+                    className={`${styles.badge} ${
+                      a.connection_status === "connected"
+                        ? styles.badgeConnected
+                        : styles.badgePending
+                    }`}
+                  >
+                    {messengerStatusLabel(a.connection_status)}
+                  </span>
+                  {a.is_active_for_session && (
+                    <span className={`${styles.badge} ${styles.badgeActive}`}>
+                      Активная сессия
+                    </span>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
         <Link to="/connect-telegram" className={styles.copyButton}>
           Подключить Telegram
         </Link>
@@ -136,7 +218,7 @@ export default function Settings() {
           <div className={styles.profileField}>
             <div className={styles.profileLabel}>Телефон (Telegram)</div>
             <div className={styles.profileValue}>
-              {user?.phone_number || user?.phone || "Не подключён"}
+              {user?.phone_number || user?.phone_number || "Не подключён"}
             </div>
           </div>
         </div>

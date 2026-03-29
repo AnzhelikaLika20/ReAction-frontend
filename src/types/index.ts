@@ -40,6 +40,14 @@ export interface Chat {
   message_count?: number;
 }
 
+export interface MessengerAccount {
+  id: string;
+  provider: string;
+  label?: string;
+  connection_status: "pending" | "connected" | string;
+  is_active_for_session: boolean;
+}
+
 export interface ReminderFile {
   file_id: string;
 }

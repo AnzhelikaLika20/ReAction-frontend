@@ -1,38 +1,125 @@
 import { useState, useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { User, Users, Radio, Search } from "lucide-react";
 import { chatService } from "../services/chatService";
-import type { Chat } from "../types";
+import { messengerService } from "../services/messengerService";
+import type { Chat, MessengerAccount } from "../types";
 import styles from "./Chats.module.css";
 
+const STORAGE_KEY = "reaction_chats_messenger_account_id";
+
+function selectOptionLabel(a: MessengerAccount): string {
+  const prov = a.provider === "telegram" ? "Telegram" : a.provider;
+  const lbl = (a.label && a.label.trim()) || "без номера";
+  const active = a.is_active_for_session ? " · активная сессия" : "";
+  return `${prov} — ${lbl}${active}`;
+}
+
 export default function Chats() {
+  const [accounts, setAccounts] = useState<MessengerAccount[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(true);
+  const [accountsError, setAccountsError] = useState<string | null>(null);
+
+  const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [chats, setChats] = useState<Chat[]>([]);
+  const [chatsLoading, setChatsLoading] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [analyzeAll, setAnalyzeAll] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
-    loadChats();
+    let cancelled = false;
+    (async () => {
+      try {
+        setAccountsError(null);
+        const list = await messengerService.list();
+        if (!cancelled) setAccounts(list);
+      } catch {
+        if (!cancelled) setAccountsError("Не удалось загрузить аккаунты");
+      } finally {
+        if (!cancelled) setAccountsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const loadChats = async () => {
-    try {
-      const data = await chatService.getAll();
-      setChats(data);
-      const allSelected = data.every((chat) => chat.is_selected);
-      setAnalyzeAll(allSelected);
-    } catch (error) {
-      console.error("Failed to load chats:", error);
+  useEffect(() => {
+    if (accounts.length === 0) {
+      setSelectedAccountId("");
+      return;
     }
+    const stored = sessionStorage.getItem(STORAGE_KEY);
+    if (stored && accounts.some((a) => a.id === stored)) {
+      setSelectedAccountId(stored);
+      return;
+    }
+    const active = accounts.find((a) => a.is_active_for_session);
+    const pick = active ?? accounts[0];
+    setSelectedAccountId(pick.id);
+    sessionStorage.setItem(STORAGE_KEY, pick.id);
+  }, [accounts]);
+
+  const activeAccount = accounts.find((a) => a.is_active_for_session);
+  const canLoadTelegramChats =
+    Boolean(selectedAccountId) && activeAccount?.id === selectedAccountId;
+
+  useEffect(() => {
+    if (!selectedAccountId || accountsLoading) return;
+
+    if (!canLoadTelegramChats) {
+      setChats([]);
+      setAnalyzeAll(false);
+      setHasChanges(false);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      setChatsLoading(true);
+      try {
+        const data = await chatService.getAll(selectedAccountId);
+        if (cancelled) return;
+        setChats(data);
+        setAnalyzeAll(
+          data.length > 0 && data.every((chat) => chat.is_selected),
+        );
+        setHasChanges(false);
+      } catch (error) {
+        console.error("Failed to load chats:", error);
+        if (!cancelled) {
+          setChats([]);
+          setAnalyzeAll(false);
+        }
+      } finally {
+        if (!cancelled) setChatsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedAccountId, accountsLoading, canLoadTelegramChats]);
+
+  const onAccountChange = (id: string) => {
+    setSelectedAccountId(id);
+    sessionStorage.setItem(STORAGE_KEY, id);
+    setSearchQuery("");
+    setHasChanges(false);
   };
 
   const handleToggleAll = (checked: boolean) => {
+    if (!canLoadTelegramChats || chatsLoading) return;
     setAnalyzeAll(checked);
     setChats(chats.map((chat) => ({ ...chat, is_selected: checked })));
     setHasChanges(true);
   };
 
   const handleToggleChat = (chatId: number, checked: boolean) => {
+    if (!canLoadTelegramChats || chatsLoading) return;
     setChats(
       chats.map((chat) =>
         chat.id === chatId ? { ...chat, is_selected: checked } : chat,
@@ -48,19 +135,20 @@ export default function Chats() {
   };
 
   const handleSave = async () => {
-    setLoading(true);
+    if (!selectedAccountId || !canLoadTelegramChats) return;
+    setSaveLoading(true);
     try {
       const selectedIds = chats
         .filter((chat) => chat.is_selected)
         .map((chat) => chat.id);
-      await chatService.updateSelection(selectedIds);
+      await chatService.updateSelection(selectedIds, selectedAccountId);
       setHasChanges(false);
       alert("Настройки сохранены");
     } catch (error) {
       console.error("Failed to save chat selection:", error);
       alert("Ошибка при сохранении настроек");
     } finally {
-      setLoading(false);
+      setSaveLoading(false);
     }
   };
 
@@ -124,13 +212,54 @@ export default function Chats() {
     return filteredChats.filter((chat) => !popularIds.has(chat.id));
   }, [filteredChats, popularChats, searchQuery]);
 
+  const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>Управление чатами</h1>
         <p className={styles.subtitle}>
-          Выберите чаты для анализа сообщений и создания напоминаний
+          Выберите аккаунт мессенджера и отметьте чаты для анализа и напоминаний
         </p>
+      </div>
+
+      <div className={styles.accountBar}>
+        <span className={styles.accountBarLabel}>Аккаунт мессенджера</span>
+        {accountsLoading ? (
+          <p className={styles.accountHint}>Загрузка аккаунтов...</p>
+        ) : accountsError ? (
+          <p className={`${styles.accountHint} ${styles.accountHintWarn}`}>
+            {accountsError}
+          </p>
+        ) : accounts.length === 0 ? (
+          <p className={`${styles.accountHint} ${styles.accountHintWarn}`}>
+            Нет подключённых аккаунтов.{" "}
+            <Link to="/connect-telegram">Подключите Telegram</Link>.
+          </p>
+        ) : (
+          <select
+            className={styles.accountSelect}
+            value={selectedAccountId}
+            onChange={(e) => onAccountChange(e.target.value)}
+          >
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {selectOptionLabel(a)}
+              </option>
+            ))}
+          </select>
+        )}
+        {selectedAccount &&
+          !canLoadTelegramChats &&
+          !accountsLoading &&
+          !accountsError && (
+            <p className={`${styles.accountHint} ${styles.accountHintWarn}`}>
+              Список чатов из Telegram доступен только для аккаунта с активной
+              сессией (откройте подключение Telegram в этой вкладке). Для
+              другого аккаунта сначала подключите его через{" "}
+              <Link to="/connect-telegram">настройки Telegram</Link>.
+            </p>
+          )}
       </div>
 
       <div className={styles.controls}>
@@ -142,6 +271,7 @@ export default function Chats() {
             placeholder="Поиск по названию чата..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            disabled={!canLoadTelegramChats || chatsLoading}
           />
         </div>
 
@@ -155,6 +285,7 @@ export default function Chats() {
               type="checkbox"
               className={styles.switchInput}
               checked={analyzeAll}
+              disabled={!canLoadTelegramChats || chatsLoading || chats.length === 0}
               onChange={(e) => handleToggleAll(e.target.checked)}
             />
             <span className={styles.slider}></span>
@@ -162,18 +293,27 @@ export default function Chats() {
         </div>
       </div>
 
-      {chats.length === 0 ? (
-        <div className={styles.empty}>
-          <div className={styles.emptyTitle}>Нет доступных чатов</div>
-          <p>Чаты будут загружены из вашего Telegram аккаунта</p>
-        </div>
-      ) : filteredChats.length === 0 ? (
-        <div className={styles.empty}>
-          <div className={styles.emptyTitle}>Ничего не найдено</div>
-          <p>Попробуйте изменить поисковый запрос</p>
-        </div>
-      ) : (
+      {chatsLoading && canLoadTelegramChats && (
+        <p className={styles.accountHint}>Загрузка чатов...</p>
+      )}
+
+      {canLoadTelegramChats && accounts.length > 0 && !chatsLoading && (
         <>
+          {chats.length === 0 ? (
+            <div className={styles.empty}>
+              <div className={styles.emptyTitle}>Нет доступных чатов</div>
+              <p>
+                Убедитесь, что Telegram подключён и авторизация завершена. Затем
+                обновите страницу.
+              </p>
+            </div>
+          ) : filteredChats.length === 0 ? (
+            <div className={styles.empty}>
+              <div className={styles.emptyTitle}>Ничего не найдено</div>
+              <p>Попробуйте изменить поисковый запрос</p>
+            </div>
+          ) : (
+            <>
           {!searchQuery && popularChats.length > 0 && (
             <div className={styles.section}>
               <h2 className={styles.sectionTitle}>Популярные чаты</h2>
@@ -184,6 +324,7 @@ export default function Chats() {
                       type="checkbox"
                       className={styles.checkbox}
                       checked={chat.is_selected}
+                      disabled={!canLoadTelegramChats || chatsLoading}
                       onChange={(e) =>
                         handleToggleChat(chat.id, e.target.checked)
                       }
@@ -199,14 +340,14 @@ export default function Chats() {
                         <span className={styles.chatType}>
                           {getChatTypeLabel(chat.type)}
                         </span>
-                        {chat.message_count && (
+                        {chat.message_count ? (
                           <>
                             <span className={styles.chatMetaSeparator}>•</span>
                             <span className={styles.chatMessageCount}>
                               {formatMessageCount(chat.message_count)}
                             </span>
                           </>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -227,6 +368,7 @@ export default function Chats() {
                       type="checkbox"
                       className={styles.checkbox}
                       checked={chat.is_selected}
+                      disabled={!canLoadTelegramChats || chatsLoading}
                       onChange={(e) =>
                         handleToggleChat(chat.id, e.target.checked)
                       }
@@ -242,14 +384,14 @@ export default function Chats() {
                         <span className={styles.chatType}>
                           {getChatTypeLabel(chat.type)}
                         </span>
-                        {chat.message_count && (
+                        {chat.message_count ? (
                           <>
                             <span className={styles.chatMetaSeparator}>•</span>
                             <span className={styles.chatMessageCount}>
                               {formatMessageCount(chat.message_count)}
                             </span>
                           </>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -262,11 +404,18 @@ export default function Chats() {
             <button
               className={styles.saveButton}
               onClick={handleSave}
-              disabled={loading || !hasChanges}
+              disabled={
+                saveLoading ||
+                !hasChanges ||
+                !canLoadTelegramChats ||
+                chatsLoading
+              }
             >
-              {loading ? "Сохранение..." : "Сохранить изменения"}
+              {saveLoading ? "Сохранение..." : "Сохранить изменения"}
             </button>
           </div>
+            </>
+          )}
         </>
       )}
     </div>

@@ -32,9 +32,9 @@ export default function Settings() {
   const [calendarUrlLoading, setCalendarUrlLoading] = useState(true);
   const [calendarUrlError, setCalendarUrlError] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState(false);
-  const [messengerAccounts, setMessengerAccounts] = useState<MessengerAccount[]>(
-    [],
-  );
+  const [messengerAccounts, setMessengerAccounts] = useState<
+    MessengerAccount[]
+  >([]);
   const [messengerLoading, setMessengerLoading] = useState(true);
   const [messengerError, setMessengerError] = useState<string | null>(null);
 
@@ -145,41 +145,47 @@ export default function Settings() {
             {messengerError}
           </div>
         )}
-        {!messengerLoading && !messengerError && messengerAccounts.length === 0 && (
-          <p className={styles.messengerEmpty}>Пока нет аккаунтов мессенджеров.</p>
-        )}
-        {!messengerLoading && !messengerError && messengerAccounts.length > 0 && (
-          <ul className={styles.messengerList}>
-            {messengerAccounts.map((a) => (
-              <li key={a.id} className={styles.messengerCard}>
-                <div className={styles.messengerCardMain}>
-                  <div className={styles.messengerCardTitle}>
-                    {messengerTitle(a)}
+        {!messengerLoading &&
+          !messengerError &&
+          messengerAccounts.length === 0 && (
+            <p className={styles.messengerEmpty}>
+              Пока нет аккаунтов мессенджеров.
+            </p>
+          )}
+        {!messengerLoading &&
+          !messengerError &&
+          messengerAccounts.length > 0 && (
+            <ul className={styles.messengerList}>
+              {messengerAccounts.map((a) => (
+                <li key={a.id} className={styles.messengerCard}>
+                  <div className={styles.messengerCardMain}>
+                    <div className={styles.messengerCardTitle}>
+                      {messengerTitle(a)}
+                    </div>
+                    <div className={styles.messengerCardMeta}>
+                      ID: {a.id.slice(0, 8)}…
+                    </div>
                   </div>
-                  <div className={styles.messengerCardMeta}>
-                    ID: {a.id.slice(0, 8)}…
-                  </div>
-                </div>
-                <div className={styles.messengerBadges}>
-                  <span
-                    className={`${styles.badge} ${
-                      a.connection_status === "connected"
-                        ? styles.badgeConnected
-                        : styles.badgePending
-                    }`}
-                  >
-                    {messengerStatusLabel(a.connection_status)}
-                  </span>
-                  {a.is_active_for_session && (
-                    <span className={`${styles.badge} ${styles.badgeActive}`}>
-                      Активная сессия
+                  <div className={styles.messengerBadges}>
+                    <span
+                      className={`${styles.badge} ${
+                        a.connection_status === "connected"
+                          ? styles.badgeConnected
+                          : styles.badgePending
+                      }`}
+                    >
+                      {messengerStatusLabel(a.connection_status)}
                     </span>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+                    {a.is_active_for_session && (
+                      <span className={`${styles.badge} ${styles.badgeActive}`}>
+                        Активная сессия
+                      </span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         <Link to="/connect-telegram" className={styles.copyButton}>
           Подключить Telegram
         </Link>

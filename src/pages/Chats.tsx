@@ -285,7 +285,9 @@ export default function Chats() {
               type="checkbox"
               className={styles.switchInput}
               checked={analyzeAll}
-              disabled={!canLoadTelegramChats || chatsLoading || chats.length === 0}
+              disabled={
+                !canLoadTelegramChats || chatsLoading || chats.length === 0
+              }
               onChange={(e) => handleToggleAll(e.target.checked)}
             />
             <span className={styles.slider}></span>
@@ -314,106 +316,110 @@ export default function Chats() {
             </div>
           ) : (
             <>
-          {!searchQuery && popularChats.length > 0 && (
-            <div className={styles.section}>
-              <h2 className={styles.sectionTitle}>Популярные чаты</h2>
-              <div className={styles.chatList}>
-                {popularChats.map((chat) => (
-                  <div key={chat.id} className={styles.chatItem}>
-                    <input
-                      type="checkbox"
-                      className={styles.checkbox}
-                      checked={chat.is_selected}
-                      disabled={!canLoadTelegramChats || chatsLoading}
-                      onChange={(e) =>
-                        handleToggleChat(chat.id, e.target.checked)
-                      }
-                    />
-                    <div
-                      className={`${styles.chatIcon} ${getChatIconClass(chat.type)}`}
-                    >
-                      {getChatIcon(chat.type)}
-                    </div>
-                    <div className={styles.chatInfo}>
-                      <h3 className={styles.chatName}>{chat.name}</h3>
-                      <div className={styles.chatMeta}>
-                        <span className={styles.chatType}>
-                          {getChatTypeLabel(chat.type)}
-                        </span>
-                        {chat.message_count ? (
-                          <>
-                            <span className={styles.chatMetaSeparator}>•</span>
-                            <span className={styles.chatMessageCount}>
-                              {formatMessageCount(chat.message_count)}
+              {!searchQuery && popularChats.length > 0 && (
+                <div className={styles.section}>
+                  <h2 className={styles.sectionTitle}>Популярные чаты</h2>
+                  <div className={styles.chatList}>
+                    {popularChats.map((chat) => (
+                      <div key={chat.id} className={styles.chatItem}>
+                        <input
+                          type="checkbox"
+                          className={styles.checkbox}
+                          checked={chat.is_selected}
+                          disabled={!canLoadTelegramChats || chatsLoading}
+                          onChange={(e) =>
+                            handleToggleChat(chat.id, e.target.checked)
+                          }
+                        />
+                        <div
+                          className={`${styles.chatIcon} ${getChatIconClass(chat.type)}`}
+                        >
+                          {getChatIcon(chat.type)}
+                        </div>
+                        <div className={styles.chatInfo}>
+                          <h3 className={styles.chatName}>{chat.name}</h3>
+                          <div className={styles.chatMeta}>
+                            <span className={styles.chatType}>
+                              {getChatTypeLabel(chat.type)}
                             </span>
-                          </>
-                        ) : null}
+                            {chat.message_count ? (
+                              <>
+                                <span className={styles.chatMetaSeparator}>
+                                  •
+                                </span>
+                                <span className={styles.chatMessageCount}>
+                                  {formatMessageCount(chat.message_count)}
+                                </span>
+                              </>
+                            ) : null}
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                </div>
+              )}
 
-          {otherChats.length > 0 && (
-            <div className={styles.section}>
-              <h2 className={styles.sectionTitle}>
-                {searchQuery ? "Результаты поиска" : "Все чаты"}
-              </h2>
-              <div className={styles.chatList}>
-                {otherChats.map((chat) => (
-                  <div key={chat.id} className={styles.chatItem}>
-                    <input
-                      type="checkbox"
-                      className={styles.checkbox}
-                      checked={chat.is_selected}
-                      disabled={!canLoadTelegramChats || chatsLoading}
-                      onChange={(e) =>
-                        handleToggleChat(chat.id, e.target.checked)
-                      }
-                    />
-                    <div
-                      className={`${styles.chatIcon} ${getChatIconClass(chat.type)}`}
-                    >
-                      {getChatIcon(chat.type)}
-                    </div>
-                    <div className={styles.chatInfo}>
-                      <h3 className={styles.chatName}>{chat.name}</h3>
-                      <div className={styles.chatMeta}>
-                        <span className={styles.chatType}>
-                          {getChatTypeLabel(chat.type)}
-                        </span>
-                        {chat.message_count ? (
-                          <>
-                            <span className={styles.chatMetaSeparator}>•</span>
-                            <span className={styles.chatMessageCount}>
-                              {formatMessageCount(chat.message_count)}
+              {otherChats.length > 0 && (
+                <div className={styles.section}>
+                  <h2 className={styles.sectionTitle}>
+                    {searchQuery ? "Результаты поиска" : "Все чаты"}
+                  </h2>
+                  <div className={styles.chatList}>
+                    {otherChats.map((chat) => (
+                      <div key={chat.id} className={styles.chatItem}>
+                        <input
+                          type="checkbox"
+                          className={styles.checkbox}
+                          checked={chat.is_selected}
+                          disabled={!canLoadTelegramChats || chatsLoading}
+                          onChange={(e) =>
+                            handleToggleChat(chat.id, e.target.checked)
+                          }
+                        />
+                        <div
+                          className={`${styles.chatIcon} ${getChatIconClass(chat.type)}`}
+                        >
+                          {getChatIcon(chat.type)}
+                        </div>
+                        <div className={styles.chatInfo}>
+                          <h3 className={styles.chatName}>{chat.name}</h3>
+                          <div className={styles.chatMeta}>
+                            <span className={styles.chatType}>
+                              {getChatTypeLabel(chat.type)}
                             </span>
-                          </>
-                        ) : null}
+                            {chat.message_count ? (
+                              <>
+                                <span className={styles.chatMetaSeparator}>
+                                  •
+                                </span>
+                                <span className={styles.chatMessageCount}>
+                                  {formatMessageCount(chat.message_count)}
+                                </span>
+                              </>
+                            ) : null}
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                </div>
+              )}
 
-          <div className={styles.actions}>
-            <button
-              className={styles.saveButton}
-              onClick={handleSave}
-              disabled={
-                saveLoading ||
-                !hasChanges ||
-                !canLoadTelegramChats ||
-                chatsLoading
-              }
-            >
-              {saveLoading ? "Сохранение..." : "Сохранить изменения"}
-            </button>
-          </div>
+              <div className={styles.actions}>
+                <button
+                  className={styles.saveButton}
+                  onClick={handleSave}
+                  disabled={
+                    saveLoading ||
+                    !hasChanges ||
+                    !canLoadTelegramChats ||
+                    chatsLoading
+                  }
+                >
+                  {saveLoading ? "Сохранение..." : "Сохранить изменения"}
+                </button>
+              </div>
             </>
           )}
         </>

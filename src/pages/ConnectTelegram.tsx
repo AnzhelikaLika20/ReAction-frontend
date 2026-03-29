@@ -158,11 +158,7 @@ export default function ConnectTelegram() {
               />
             </div>
             {error && <div className={styles.error}>{error}</div>}
-            <button
-              type="submit"
-              className={styles.button}
-              disabled={loading}
-            >
+            <button type="submit" className={styles.button} disabled={loading}>
               {loading ? "Отправка..." : "Получить код"}
             </button>
           </form>
@@ -187,11 +183,7 @@ export default function ConnectTelegram() {
               />
             </div>
             {error && <div className={styles.error}>{error}</div>}
-            <button
-              type="submit"
-              className={styles.button}
-              disabled={loading}
-            >
+            <button type="submit" className={styles.button} disabled={loading}>
               {loading ? "Проверка..." : "Отправить"}
             </button>
           </form>
@@ -215,11 +207,7 @@ export default function ConnectTelegram() {
               />
             </div>
             {error && <div className={styles.error}>{error}</div>}
-            <button
-              type="submit"
-              className={styles.button}
-              disabled={loading}
-            >
+            <button type="submit" className={styles.button} disabled={loading}>
               {loading ? "Проверка..." : "Подтвердить"}
             </button>
           </form>

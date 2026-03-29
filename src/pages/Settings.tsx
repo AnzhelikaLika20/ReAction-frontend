@@ -218,7 +218,7 @@ export default function Settings() {
           <div className={styles.profileField}>
             <div className={styles.profileLabel}>Телефон (Telegram)</div>
             <div className={styles.profileValue}>
-              {user?.phone_number || user?.phone_number || "Не подключён"}
+              {user?.phone_number || "Не подключён"}
             </div>
           </div>
         </div>

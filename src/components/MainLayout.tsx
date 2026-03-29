@@ -31,7 +31,7 @@ export default function MainLayout() {
     if (user.email) {
       return user.email;
     }
-    return user.phone_number || user.phone || "Пользователь";
+    return user.phone_number || "Пользователь";
   };
 
   return (

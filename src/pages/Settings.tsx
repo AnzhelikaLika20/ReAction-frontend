@@ -7,6 +7,7 @@ import {
   Copy,
   MessageSquare,
   Trash2,
+  UserX,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { authService, TELEGRAM_CONNECT_WIP_KEY } from "../services/authService";
@@ -36,7 +37,7 @@ const CHATS_ACCOUNT_STORAGE_KEY = "reaction_chats_messenger_account_id";
 
 export default function Settings() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, signOut, deleteAccount: removeUserAccount } = useAuth();
 
   const [calendarUrl, setCalendarUrl] = useState<string | null>(null);
   const [calendarUrlLoading, setCalendarUrlLoading] = useState(true);
@@ -48,6 +49,9 @@ export default function Settings() {
   const [messengerLoading, setMessengerLoading] = useState(true);
   const [messengerError, setMessengerError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [accountDeletePassword, setAccountDeletePassword] = useState("");
+  const [accountDeleteErr, setAccountDeleteErr] = useState("");
+  const [accountDeleteBusy, setAccountDeleteBusy] = useState(false);
 
   const loadMessengers = useCallback(async () => {
     try {
@@ -64,6 +68,16 @@ export default function Settings() {
   useEffect(() => {
     setMessengerLoading(true);
     void loadMessengers();
+  }, [loadMessengers]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        void loadMessengers();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, [loadMessengers]);
 
   const handleRemoveMessenger = async (id: string) => {
@@ -108,17 +122,34 @@ export default function Settings() {
     loadCalendarUrl();
   }, []);
 
-  const handleLogout = async () => {
-    if (!confirm("Вы уверены, что хотите выйти?")) {
+  const handleSignOut = () => {
+    if (!confirm("Выйти из аккаунта на этом устройстве?")) {
       return;
     }
+    signOut();
+    navigate("/auth");
+  };
 
+  const handleDeleteAccountSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAccountDeleteErr("");
+    if (
+      !confirm(
+        "Удалить учётную запись безвозвратно? Профиль, сценарии, напоминания и привязки мессенджеров будут удалены.",
+      )
+    ) {
+      return;
+    }
+    setAccountDeleteBusy(true);
     try {
-      await logout();
+      await removeUserAccount(accountDeletePassword);
       navigate("/auth");
-    } catch (error) {
-      console.error("Logout failed:", error);
-      alert("Ошибка при выходе");
+    } catch (err) {
+      setAccountDeleteErr(
+        err instanceof Error ? err.message : "Не удалось удалить аккаунт",
+      );
+    } finally {
+      setAccountDeleteBusy(false);
     }
   };
 
@@ -174,9 +205,10 @@ export default function Settings() {
         </h2>
         <p className={styles.calendarHint}>
           Подключите один или несколько аккаунтов Telegram — каждый проходит
-          отдельный вход по номеру. Список чатов доступен для аккаунтов, у
-          которых на сервере запущен клиент (пометка «клиент на сервере» на
-          странице чатов).
+          отдельный вход по номеру. Аккаунт со статусом «ожидание подключения»
+          можно нажать, чтобы продолжить ввод номера, кода или пароля. Список
+          чатов доступен для аккаунтов, у которых на сервере запущен клиент
+          (пометка «клиент на сервере» на странице чатов).
         </p>
         {messengerLoading && (
           <p className={styles.calendarLoading}>Загрузка аккаунтов...</p>
@@ -197,47 +229,88 @@ export default function Settings() {
           !messengerError &&
           messengerAccounts.length > 0 && (
             <ul className={styles.messengerList}>
-              {messengerAccounts.map((a) => (
-                <li key={a.id} className={styles.messengerCard}>
-                  <div className={styles.messengerCardMain}>
-                    <div className={styles.messengerCardTitle}>
-                      {messengerTitle(a)}
-                    </div>
-                    <div className={styles.messengerCardMeta}>
-                      ID: {a.id.slice(0, 8)}…
-                    </div>
-                  </div>
-                  <div className={styles.messengerCardActions}>
-                    <div className={styles.messengerBadges}>
-                      <span
-                        className={`${styles.badge} ${
-                          a.connection_status === "connected"
-                            ? styles.badgeConnected
-                            : styles.badgePending
-                        }`}
-                      >
-                        {messengerStatusLabel(a.connection_status)}
-                      </span>
-                      {a.is_active_for_session && (
-                        <span
-                          className={`${styles.badge} ${styles.badgeActive}`}
-                        >
-                          Клиент на сервере
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      className={styles.messengerRemoveButton}
-                      title="Удалить привязку"
-                      disabled={deletingId === a.id}
-                      onClick={() => void handleRemoveMessenger(a.id)}
+              {messengerAccounts.map((a) => {
+                const isPending = a.connection_status === "pending";
+                return (
+                  <li
+                    key={a.id}
+                    className={`${styles.messengerCard} ${
+                      isPending ? styles.messengerCardPending : ""
+                    }`}
+                  >
+                    <div
+                      className={styles.messengerCardMain}
+                      role={isPending ? "button" : undefined}
+                      tabIndex={isPending ? 0 : undefined}
+                      onClick={
+                        isPending
+                          ? () =>
+                              navigate(
+                                `/connect-telegram?continue=${encodeURIComponent(a.id)}`,
+                              )
+                          : undefined
+                      }
+                      onKeyDown={
+                        isPending
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                navigate(
+                                  `/connect-telegram?continue=${encodeURIComponent(a.id)}`,
+                                );
+                              }
+                            }
+                          : undefined
+                      }
                     >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </li>
-              ))}
+                      <div className={styles.messengerCardTitle}>
+                        {messengerTitle(a)}
+                      </div>
+                      <div className={styles.messengerCardMeta}>
+                        ID: {a.id.slice(0, 8)}…
+                        {isPending && (
+                          <span className={styles.messengerContinueHint}>
+                            {" "}
+                            · нажмите, чтобы продолжить подключение
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className={styles.messengerCardActions}>
+                      <div className={styles.messengerBadges}>
+                        <span
+                          className={`${styles.badge} ${
+                            a.connection_status === "connected"
+                              ? styles.badgeConnected
+                              : styles.badgePending
+                          }`}
+                        >
+                          {messengerStatusLabel(a.connection_status)}
+                        </span>
+                        {a.is_active_for_session && (
+                          <span
+                            className={`${styles.badge} ${styles.badgeActive}`}
+                          >
+                            Клиент на сервере
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        className={styles.messengerRemoveButton}
+                        title="Удалить привязку"
+                        disabled={deletingId === a.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleRemoveMessenger(a.id);
+                        }}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         <Link to="/connect-telegram" className={styles.copyButton}>
@@ -283,10 +356,44 @@ export default function Settings() {
           </div>
         </div>
 
-        <button className={styles.logoutButton} onClick={handleLogout}>
+        <button
+          type="button"
+          className={styles.signOutButton}
+          onClick={handleSignOut}
+        >
           <LogOut size={20} />
           Выйти
         </button>
+
+        <div className={styles.deleteAccountBlock}>
+          <h3 className={styles.profileLabel}>Удаление аккаунта</h3>
+          <p className={styles.deleteAccountHint}>
+            Полное удаление учётной записи на сервере. Потребуется текущий
+            пароль от входа по email.
+          </p>
+          <form onSubmit={(e) => void handleDeleteAccountSubmit(e)}>
+            <input
+              type="password"
+              autoComplete="current-password"
+              placeholder="Пароль"
+              className={styles.deleteAccountInput}
+              value={accountDeletePassword}
+              onChange={(e) => setAccountDeletePassword(e.target.value)}
+              disabled={accountDeleteBusy}
+            />
+            {accountDeleteErr ? (
+              <p className={styles.deleteAccountError}>{accountDeleteErr}</p>
+            ) : null}
+            <button
+              type="submit"
+              className={styles.dangerButton}
+              disabled={accountDeleteBusy || !accountDeletePassword.trim()}
+            >
+              <UserX size={20} />
+              {accountDeleteBusy ? "Удаление…" : "Удалить аккаунт навсегда"}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

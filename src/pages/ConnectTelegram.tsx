@@ -1,14 +1,20 @@
-import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import {
-  authService,
-  TELEGRAM_CONNECT_WIP_KEY,
-} from "../services/authService";
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useRef,
+} from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { authService, TELEGRAM_CONNECT_WIP_KEY } from "../services/authService";
+import { ApiError } from "../services/httpClient";
 import { useAuth } from "../context/AuthContext";
 import styles from "./Auth.module.css";
 
 export default function ConnectTelegram() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const resumePendingRef = useRef(false);
   const { checkAuth } = useAuth();
 
   const [step, setStep] = useState<"phone" | "code" | "password" | "loading">(
@@ -42,6 +48,19 @@ export default function ConnectTelegram() {
     setError("");
   }, [persistWip]);
 
+  useLayoutEffect(() => {
+    const c = searchParams.get("continue");
+    if (c) {
+      sessionStorage.setItem(TELEGRAM_CONNECT_WIP_KEY, c);
+      resumePendingRef.current = true;
+      setSearchParams({}, { replace: true });
+      return;
+    }
+    if (!resumePendingRef.current) {
+      sessionStorage.removeItem(TELEGRAM_CONNECT_WIP_KEY);
+    }
+  }, [searchParams, setSearchParams]);
+
   useEffect(() => {
     void (async () => {
       try {
@@ -52,12 +71,21 @@ export default function ConnectTelegram() {
 
         const wip = sessionStorage.getItem(TELEGRAM_CONNECT_WIP_KEY);
         if (!wip) {
+          setMessengerAccountId(null);
+          setPhone("");
+          setCode("");
+          setPassword("");
+          setError("");
           setStep("phone");
           return;
         }
 
         setMessengerAccountId(wip);
         const status = await authService.getSessionStatusForMessenger(wip);
+
+        if (status.phone) {
+          setPhone(status.phone);
+        }
 
         switch (status.auth_state) {
           case "ready":
@@ -84,7 +112,7 @@ export default function ConnectTelegram() {
         setStep("phone");
       }
     })();
-  }, [navigate, checkAuth, persistWip]);
+  }, [navigate, checkAuth, persistWip, searchParams]);
 
   useEffect(() => {
     persistWip(messengerAccountId);
@@ -103,7 +131,7 @@ export default function ConnectTelegram() {
     try {
       let mid = messengerAccountId;
       if (!mid) {
-        mid = await authService.initTelegramAuth();
+        mid = await authService.initTelegramAuth(phone);
         setMessengerAccountId(mid);
         await new Promise<void>((r) => setTimeout(r, 500));
         await authService.waitForStatusChange(mid, "wait_phone", 8, 500);
@@ -119,7 +147,14 @@ export default function ConnectTelegram() {
         navigate("/settings");
         return;
       }
-      setError("Ошибка отправки номера телефона");
+      if (err instanceof ApiError && err.status === 409) {
+        startNewAccountFlow();
+      }
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : "Ошибка отправки номера телефона",
+      );
       console.error(err);
     } finally {
       setLoading(false);
@@ -139,9 +174,8 @@ export default function ConnectTelegram() {
     try {
       await authService.sendCode(code, messengerAccountId);
       await new Promise<void>((r) => setTimeout(r, 1500));
-      const status = await authService.getSessionStatusForMessenger(
-        messengerAccountId,
-      );
+      const status =
+        await authService.getSessionStatusForMessenger(messengerAccountId);
 
       if (status.auth_state === "wait_password") {
         setStep("password");
@@ -201,8 +235,8 @@ export default function ConnectTelegram() {
         <h2 className={styles.title}>Подключение Telegram</h2>
         <p className={styles.subtitle}>
           Каждый запуск подключения создаёт отдельный клиент на сервере. Можно
-          открыть несколько вкладок или нажать «другой номер» — параллельно
-          идут независимые потоки входа.
+          открыть несколько вкладок или нажать «другой номер» — параллельно идут
+          независимые потоки входа.
         </p>
 
         {step === "phone" && (

@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { User, Users, Radio, Search } from "lucide-react";
 import { chatService } from "../services/chatService";
 import { messengerService } from "../services/messengerService";
@@ -12,10 +12,13 @@ function selectOptionLabel(a: MessengerAccount): string {
   const prov = a.provider === "telegram" ? "Telegram" : a.provider;
   const lbl = (a.label && a.label.trim()) || "без номера";
   const active = a.is_active_for_session ? " · клиент на сервере" : "";
-  return `${prov} — ${lbl}${active}`;
+  const pending =
+    a.connection_status === "pending" ? " · подключение не завершено" : "";
+  return `${prov} — ${lbl}${pending}${active}`;
 }
 
 export default function Chats() {
+  const navigate = useNavigate();
   const [accounts, setAccounts] = useState<MessengerAccount[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(true);
   const [accountsError, setAccountsError] = useState<string | null>(null);
@@ -29,23 +32,32 @@ export default function Chats() {
   const [saveLoading, setSaveLoading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        setAccountsError(null);
-        const list = await messengerService.list();
-        if (!cancelled) setAccounts(list);
-      } catch {
-        if (!cancelled) setAccountsError("Не удалось загрузить аккаунты");
-      } finally {
-        if (!cancelled) setAccountsLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+  const loadAccounts = useCallback(async () => {
+    try {
+      setAccountsError(null);
+      setAccountsLoading(true);
+      const list = await messengerService.list();
+      setAccounts(list);
+    } catch {
+      setAccountsError("Не удалось загрузить аккаунты");
+    } finally {
+      setAccountsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadAccounts();
+  }, [loadAccounts]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        void loadAccounts();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [loadAccounts]);
 
   useEffect(() => {
     if (accounts.length === 0) {
@@ -64,9 +76,7 @@ export default function Chats() {
   }, [accounts]);
 
   const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
-  const canLoadTelegramChats = Boolean(
-    selectedAccount?.is_active_for_session,
-  );
+  const canLoadTelegramChats = Boolean(selectedAccount?.is_active_for_session);
 
   useEffect(() => {
     if (!selectedAccountId || accountsLoading) return;
@@ -253,10 +263,31 @@ export default function Chats() {
           !accountsLoading &&
           !accountsError && (
             <p className={`${styles.accountHint} ${styles.accountHintWarn}`}>
-              Для этого аккаунта на сервере не запущен Telegram-клиент
-              (tdlib). Подключите аккаунт или дождитесь восстановления сессий на
-              сервере.{" "}
-              <Link to="/connect-telegram">Подключение Telegram</Link>.
+              {selectedAccount.connection_status === "pending" ? (
+                <>
+                  Подключение этого аккаунта не завершено.{" "}
+                  <button
+                    type="button"
+                    className={styles.inlineLinkButton}
+                    onClick={() =>
+                      navigate(
+                        `/connect-telegram?continue=${encodeURIComponent(selectedAccount.id)}`,
+                      )
+                    }
+                  >
+                    Продолжить подключение
+                  </button>
+                  {" · "}
+                  <Link to="/connect-telegram">Новый вход</Link>
+                </>
+              ) : (
+                <>
+                  Для этого аккаунта на сервере не запущен Telegram-клиент
+                  (tdlib). Подключите аккаунт или дождитесь восстановления
+                  сессий на сервере.{" "}
+                  <Link to="/connect-telegram">Подключение Telegram</Link>.
+                </>
+              )}
             </p>
           )}
       </div>

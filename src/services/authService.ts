@@ -10,6 +10,8 @@ import { isTokenExpired, getTokenUserId } from "./tokenUtils";
 export const TELEGRAM_CONNECT_WIP_KEY = "reaction_telegram_connect_wip";
 
 const LEGACY_TELEGRAM_KEY = "reaction_telegram_messenger_account_id";
+const CHATS_MESSENGER_ACCOUNT_STORAGE_KEY =
+  "reaction_chats_messenger_account_id";
 
 function persistToken(token: string) {
   localStorage.setItem("jwt_token", token);
@@ -34,14 +36,10 @@ export const authService = {
     return response.token;
   },
 
-  /**
-   * Создаёт новую запись мессенджера и поднимает tdlib (каждый вызов — отдельный параллельный клиент).
-   * id не кладётся в глобальный storage — храните в состоянии страницы / sessionStorage wip.
-   */
-  async initTelegramAuth(): Promise<string> {
+  async initTelegramAuth(phoneNumber: string): Promise<string> {
     const res = await httpClient.post<TelegramInitResponse>(
       "/auth/telegram/init",
-      {},
+      { phone_number: phoneNumber },
     );
     if (!res.messenger_account_id) {
       throw new Error("Ответ init без messenger_account_id");
@@ -119,15 +117,16 @@ export const authService = {
     sessionStorage.removeItem(TELEGRAM_CONNECT_WIP_KEY);
   },
 
-  async logout(): Promise<void> {
-    try {
-      await httpClient.delete("/auth/session");
-    } catch {
-      /* ignore */
-    }
+  clearSession(): void {
     localStorage.removeItem("jwt_token");
     sessionStorage.removeItem(TELEGRAM_CONNECT_WIP_KEY);
     sessionStorage.removeItem(LEGACY_TELEGRAM_KEY);
+    sessionStorage.removeItem(CHATS_MESSENGER_ACCOUNT_STORAGE_KEY);
+  },
+
+  async deleteAccount(password: string): Promise<void> {
+    await httpClient.deleteJson("/users/me", { password });
+    this.clearSession();
   },
 
   async getCurrentUser(): Promise<User> {

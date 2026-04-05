@@ -1,6 +1,16 @@
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "https://api.re-action.site";
 
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+    this.name = "ApiError";
+  }
+}
+
 export class HttpClient {
   private baseUrl: string;
 
@@ -53,7 +63,21 @@ export class HttpClient {
 
     if (!response.ok) {
       this.handleUnauthorized(response.status);
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      let message = `HTTP ${response.status}: ${response.statusText}`;
+      try {
+        const errBody: unknown = await response.json();
+        if (
+          errBody &&
+          typeof errBody === "object" &&
+          "error" in errBody &&
+          typeof (errBody as { error: unknown }).error === "string"
+        ) {
+          message = (errBody as { error: string }).error;
+        }
+      } catch {
+        /* ignore non-JSON body */
+      }
+      throw new ApiError(response.status, message);
     }
 
     return response.json();
@@ -83,6 +107,34 @@ export class HttpClient {
     if (!response.ok) {
       this.handleUnauthorized(response.status);
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+  }
+
+  /** DELETE с JSON-телом (например удаление аккаунта с паролем). */
+  async deleteJson(endpoint: string, data: unknown): Promise<void> {
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      method: "DELETE",
+      headers: this.getHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      this.handleUnauthorized(response.status);
+      let message = `HTTP ${response.status}: ${response.statusText}`;
+      try {
+        const errBody: unknown = await response.json();
+        if (
+          errBody &&
+          typeof errBody === "object" &&
+          "error" in errBody &&
+          typeof (errBody as { error: unknown }).error === "string"
+        ) {
+          message = (errBody as { error: string }).error;
+        }
+      } catch {
+        /* ignore */
+      }
+      throw new ApiError(response.status, message);
     }
   }
 

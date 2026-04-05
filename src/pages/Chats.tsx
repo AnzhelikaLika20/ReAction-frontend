@@ -11,7 +11,7 @@ const STORAGE_KEY = "reaction_chats_messenger_account_id";
 function selectOptionLabel(a: MessengerAccount): string {
   const prov = a.provider === "telegram" ? "Telegram" : a.provider;
   const lbl = (a.label && a.label.trim()) || "без номера";
-  const active = a.is_active_for_session ? " · активная сессия" : "";
+  const active = a.is_active_for_session ? " · клиент на сервере" : "";
   return `${prov} — ${lbl}${active}`;
 }
 
@@ -63,9 +63,10 @@ export default function Chats() {
     sessionStorage.setItem(STORAGE_KEY, pick.id);
   }, [accounts]);
 
-  const activeAccount = accounts.find((a) => a.is_active_for_session);
-  const canLoadTelegramChats =
-    Boolean(selectedAccountId) && activeAccount?.id === selectedAccountId;
+  const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
+  const canLoadTelegramChats = Boolean(
+    selectedAccount?.is_active_for_session,
+  );
 
   useEffect(() => {
     if (!selectedAccountId || accountsLoading) return;
@@ -212,8 +213,6 @@ export default function Chats() {
     return filteredChats.filter((chat) => !popularIds.has(chat.id));
   }, [filteredChats, popularChats, searchQuery]);
 
-  const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
-
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -254,10 +253,10 @@ export default function Chats() {
           !accountsLoading &&
           !accountsError && (
             <p className={`${styles.accountHint} ${styles.accountHintWarn}`}>
-              Список чатов из Telegram доступен только для аккаунта с активной
-              сессией (откройте подключение Telegram в этой вкладке). Для
-              другого аккаунта сначала подключите его через{" "}
-              <Link to="/connect-telegram">настройки Telegram</Link>.
+              Для этого аккаунта на сервере не запущен Telegram-клиент
+              (tdlib). Подключите аккаунт или дождитесь восстановления сессий на
+              сервере.{" "}
+              <Link to="/connect-telegram">Подключение Telegram</Link>.
             </p>
           )}
       </div>

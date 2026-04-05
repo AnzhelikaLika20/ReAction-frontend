@@ -37,12 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const currentUser = await authService.getCurrentUser();
       setUser(currentUser);
 
-      try {
-        const status = await authService.getSessionStatus();
-        setSessionState(status);
-      } catch {
-        setSessionState({ auth_state: "unknown" });
-      }
+      setSessionState({ auth_state: "unknown" });
 
       setIsAuthenticated(true);
     } catch (error) {

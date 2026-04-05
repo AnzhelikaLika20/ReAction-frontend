@@ -1,5 +1,3 @@
-import { getTokenUserId } from "./tokenUtils";
-
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "https://api.re-action.site";
 
@@ -18,7 +16,6 @@ export class HttpClient {
     const token = localStorage.getItem("jwt_token");
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
-      headers["X-Session-ID"] = getTokenUserId(token) || "";
     }
 
     return headers;

@@ -1,7 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { User, LogOut, Calendar, Copy, MessageSquare } from "lucide-react";
+import {
+  User,
+  LogOut,
+  Calendar,
+  Copy,
+  MessageSquare,
+  Trash2,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { authService, TELEGRAM_CONNECT_WIP_KEY } from "../services/authService";
 import { reminderService } from "../services/reminderService";
 import { messengerService } from "../services/messengerService";
 import type { MessengerAccount } from "../types";
@@ -24,6 +32,8 @@ function messengerTitle(a: MessengerAccount): string {
   return `${prov} · ${lbl}`;
 }
 
+const CHATS_ACCOUNT_STORAGE_KEY = "reaction_chats_messenger_account_id";
+
 export default function Settings() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -37,21 +47,50 @@ export default function Settings() {
   >([]);
   const [messengerLoading, setMessengerLoading] = useState(true);
   const [messengerError, setMessengerError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const loadMessengers = useCallback(async () => {
+    try {
+      setMessengerError(null);
+      const list = await messengerService.list();
+      setMessengerAccounts(list);
+    } catch {
+      setMessengerError("Не удалось загрузить список аккаунтов");
+    } finally {
+      setMessengerLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const loadMessengers = async () => {
-      try {
-        setMessengerError(null);
-        const list = await messengerService.list();
-        setMessengerAccounts(list);
-      } catch {
-        setMessengerError("Не удалось загрузить список аккаунтов");
-      } finally {
-        setMessengerLoading(false);
+    setMessengerLoading(true);
+    void loadMessengers();
+  }, [loadMessengers]);
+
+  const handleRemoveMessenger = async (id: string) => {
+    if (
+      !confirm(
+        "Удалить привязку этого мессенджера? Сессия на сервере будет остановлена, выбор чатов для этого аккаунта пропадёт.",
+      )
+    ) {
+      return;
+    }
+    setDeletingId(id);
+    try {
+      await messengerService.remove(id);
+      if (sessionStorage.getItem(TELEGRAM_CONNECT_WIP_KEY) === id) {
+        authService.clearTelegramConnectWip();
       }
-    };
-    loadMessengers();
-  }, []);
+      if (sessionStorage.getItem(CHATS_ACCOUNT_STORAGE_KEY) === id) {
+        sessionStorage.removeItem(CHATS_ACCOUNT_STORAGE_KEY);
+      }
+      setMessengerLoading(true);
+      await loadMessengers();
+    } catch {
+      alert("Не удалось удалить аккаунт");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   useEffect(() => {
     const loadCalendarUrl = async () => {
@@ -134,8 +173,10 @@ export default function Settings() {
           Мессенджеры
         </h2>
         <p className={styles.calendarHint}>
-          Подключите Telegram, чтобы загружать список чатов и получать события
-          из выбранных диалогов. Несколько аккаунтов можно настроить по очереди.
+          Подключите один или несколько аккаунтов Telegram — каждый проходит
+          отдельный вход по номеру. Список чатов доступен для аккаунтов, у
+          которых на сервере запущен клиент (пометка «клиент на сервере» на
+          странице чатов).
         </p>
         {messengerLoading && (
           <p className={styles.calendarLoading}>Загрузка аккаунтов...</p>
@@ -166,21 +207,34 @@ export default function Settings() {
                       ID: {a.id.slice(0, 8)}…
                     </div>
                   </div>
-                  <div className={styles.messengerBadges}>
-                    <span
-                      className={`${styles.badge} ${
-                        a.connection_status === "connected"
-                          ? styles.badgeConnected
-                          : styles.badgePending
-                      }`}
-                    >
-                      {messengerStatusLabel(a.connection_status)}
-                    </span>
-                    {a.is_active_for_session && (
-                      <span className={`${styles.badge} ${styles.badgeActive}`}>
-                        Активная сессия
+                  <div className={styles.messengerCardActions}>
+                    <div className={styles.messengerBadges}>
+                      <span
+                        className={`${styles.badge} ${
+                          a.connection_status === "connected"
+                            ? styles.badgeConnected
+                            : styles.badgePending
+                        }`}
+                      >
+                        {messengerStatusLabel(a.connection_status)}
                       </span>
-                    )}
+                      {a.is_active_for_session && (
+                        <span
+                          className={`${styles.badge} ${styles.badgeActive}`}
+                        >
+                          Клиент на сервере
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.messengerRemoveButton}
+                      title="Удалить привязку"
+                      disabled={deletingId === a.id}
+                      onClick={() => void handleRemoveMessenger(a.id)}
+                    >
+                      <Trash2 size={18} />
+                    </button>
                   </div>
                 </li>
               ))}

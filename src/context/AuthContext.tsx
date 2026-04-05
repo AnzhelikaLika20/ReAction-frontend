@@ -14,7 +14,8 @@ interface AuthContextType {
   sessionState: SessionState | null;
   loading: boolean;
   checkAuth: () => Promise<void>;
-  logout: () => Promise<void>;
+  signOut: () => void;
+  deleteAccount: (password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,12 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const currentUser = await authService.getCurrentUser();
       setUser(currentUser);
 
-      try {
-        const status = await authService.getSessionStatus();
-        setSessionState(status);
-      } catch {
-        setSessionState({ auth_state: "unknown" });
-      }
+      setSessionState({ auth_state: "unknown" });
 
       setIsAuthenticated(true);
     } catch (error) {
@@ -55,15 +51,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = async () => {
-    try {
-      await authService.logout();
-      setIsAuthenticated(false);
-      setUser(null);
-      setSessionState(null);
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
+  const signOut = () => {
+    authService.clearSession();
+    setIsAuthenticated(false);
+    setUser(null);
+    setSessionState(null);
+  };
+
+  const deleteAccount = async (password: string) => {
+    await authService.deleteAccount(password);
+    setIsAuthenticated(false);
+    setUser(null);
+    setSessionState(null);
   };
 
   useEffect(() => {
@@ -78,7 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         sessionState,
         loading,
         checkAuth,
-        logout,
+        signOut,
+        deleteAccount,
       }}
     >
       {children}

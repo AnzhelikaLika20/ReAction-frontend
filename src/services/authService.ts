@@ -1,6 +1,17 @@
 import { httpClient } from "./httpClient";
-import type { AuthTokenResponse, SessionState, User } from "../types";
+import type {
+  AuthTokenResponse,
+  SessionState,
+  TelegramInitResponse,
+  User,
+} from "../types";
 import { isTokenExpired, getTokenUserId } from "./tokenUtils";
+
+export const TELEGRAM_CONNECT_WIP_KEY = "reaction_telegram_connect_wip";
+
+const LEGACY_TELEGRAM_KEY = "reaction_telegram_messenger_account_id";
+const CHATS_MESSENGER_ACCOUNT_STORAGE_KEY =
+  "reaction_chats_messenger_account_id";
 
 function persistToken(token: string) {
   localStorage.setItem("jwt_token", token);
@@ -25,19 +36,32 @@ export const authService = {
     return response.token;
   },
 
-  async initTelegramAuth(): Promise<void> {
-    await httpClient.post("/auth/telegram/init");
-    await this.waitForStatusChange("wait_phone", 5, 1000);
+  async initTelegramAuth(phoneNumber: string): Promise<string> {
+    const res = await httpClient.post<TelegramInitResponse>(
+      "/auth/telegram/init",
+      { phone_number: phoneNumber },
+    );
+    if (!res.messenger_account_id) {
+      throw new Error("Ответ init без messenger_account_id");
+    }
+    return res.messenger_account_id;
   },
 
-  async sendPhone(phone: string): Promise<void> {
-    await httpClient.post("/auth/telegram/phone", { phone_number: phone });
-    await this.waitForStatusChange("wait_code", 5, 1000);
+  async sendPhone(phone: string, messengerAccountId: string): Promise<void> {
+    await httpClient.post("/auth/telegram/phone", {
+      phone_number: phone,
+      messenger_account_id: messengerAccountId,
+    });
+    await this.waitForStatusChange(messengerAccountId, "wait_code", 5, 1000);
   },
 
-  async sendCode(code: string): Promise<void> {
-    await httpClient.post("/auth/telegram/code", { code: code });
+  async sendCode(code: string, messengerAccountId: string): Promise<void> {
+    await httpClient.post("/auth/telegram/code", {
+      code,
+      messenger_account_id: messengerAccountId,
+    });
     const status = await this.waitForStatusChange(
+      messengerAccountId,
       ["ready", "wait_password"],
       5,
       1000,
@@ -47,17 +71,27 @@ export const authService = {
     }
   },
 
-  async sendTelegramPassword(password: string): Promise<void> {
-    await httpClient.post("/auth/telegram/password", { password: password });
-    await this.waitForStatusChange("ready", 5, 1000);
+  async sendTelegramPassword(
+    password: string,
+    messengerAccountId: string,
+  ): Promise<void> {
+    await httpClient.post("/auth/telegram/password", {
+      password,
+      messenger_account_id: messengerAccountId,
+    });
+    await this.waitForStatusChange(messengerAccountId, "ready", 5, 1000);
   },
 
-  async getSessionStatus(): Promise<SessionState> {
-    const response = await httpClient.get<SessionState>("/auth/session/status");
-    return response;
+  async getSessionStatusForMessenger(
+    messengerAccountId: string,
+  ): Promise<SessionState> {
+    return httpClient.get<SessionState>(
+      `/auth/session/status?messenger_account_id=${encodeURIComponent(messengerAccountId)}`,
+    );
   },
 
   async waitForStatusChange(
+    messengerAccountId: string,
     expectedStatus: string | string[],
     maxAttempts: number = 5,
     delayMs: number = 1000,
@@ -69,7 +103,8 @@ export const authService = {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, delayMs));
 
-      const status = await this.getSessionStatus();
+      const status =
+        await this.getSessionStatusForMessenger(messengerAccountId);
       if (expectedStatuses.includes(status.auth_state)) {
         return status;
       }
@@ -78,13 +113,20 @@ export const authService = {
     return null;
   },
 
-  async logout(): Promise<void> {
-    try {
-      await httpClient.delete("/auth/session");
-    } catch {
-      /* ignore */
-    }
+  clearTelegramConnectWip(): void {
+    sessionStorage.removeItem(TELEGRAM_CONNECT_WIP_KEY);
+  },
+
+  clearSession(): void {
     localStorage.removeItem("jwt_token");
+    sessionStorage.removeItem(TELEGRAM_CONNECT_WIP_KEY);
+    sessionStorage.removeItem(LEGACY_TELEGRAM_KEY);
+    sessionStorage.removeItem(CHATS_MESSENGER_ACCOUNT_STORAGE_KEY);
+  },
+
+  async deleteAccount(password: string): Promise<void> {
+    await httpClient.deleteJson("/users/me", { password });
+    this.clearSession();
   },
 
   async getCurrentUser(): Promise<User> {

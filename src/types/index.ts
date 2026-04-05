@@ -22,6 +22,11 @@ export interface AuthTokenResponse {
   token: string;
 }
 
+export interface TelegramInitResponse {
+  auth_state: string;
+  messenger_account_id: string;
+}
+
 export interface Scenario {
   id: string;
   name: string;

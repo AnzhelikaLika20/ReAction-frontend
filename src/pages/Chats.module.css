@@ -79,6 +79,22 @@
   color: #744210;
 }
 
+.inlineLinkButton {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: #667eea;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.inlineLinkButton:hover {
+  color: #5568d3;
+}
+
 .controls {
   display: flex;
   flex-direction: column;

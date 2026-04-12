@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
+import { ApiError } from "../services/httpClient";
 import styles from "./Auth.module.css";
 
 type Mode = "login" | "register";
@@ -15,29 +16,65 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [registerDone, setRegisterDone] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [info, setInfo] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setInfo("");
     setLoading(true);
 
     try {
       if (mode === "register") {
         await authService.register(email, password);
+        setRegisterDone(true);
       } else {
         await authService.login(email, password);
+        await checkAuth();
+        navigate("/");
       }
-      await checkAuth();
-      navigate("/");
     } catch (err) {
-      setError(
-        mode === "register"
-          ? "Не удалось зарегистрироваться. Возможно, email уже занят."
-          : "Неверный email или пароль.",
-      );
+      if (mode === "register") {
+        if (err instanceof ApiError && err.status === 409) {
+          setError("Этот email уже зарегистрирован.");
+        } else {
+          setError(
+            "Не удалось зарегистрироваться. Проверьте данные или попробуйте позже.",
+          );
+        }
+      } else if (err instanceof ApiError && err.status === 403) {
+        setError(
+          "Сначала подтвердите email по ссылке из письма или запросите новое письмо ниже.",
+        );
+      } else {
+        setError("Неверный email или пароль.");
+      }
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (!email.trim()) {
+      setError("Укажите email, на который отправить письмо.");
+      return;
+    }
+    setError("");
+    setInfo("");
+    setResendLoading(true);
+    try {
+      await authService.resendVerificationEmail(email.trim());
+      setInfo(
+        "Если аккаунт с таким email есть и он не подтверждён, мы отправили новое письмо.",
+      );
+    } catch (e) {
+      console.error(e);
+      setError("Не удалось отправить письмо. Попробуйте позже.");
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -64,6 +101,8 @@ export default function Auth() {
             onClick={() => {
               setMode("login");
               setError("");
+              setInfo("");
+              setRegisterDone(false);
             }}
           >
             Вход
@@ -74,12 +113,41 @@ export default function Auth() {
             onClick={() => {
               setMode("register");
               setError("");
+              setInfo("");
+              setRegisterDone(false);
             }}
           >
             Регистрация
           </button>
         </div>
 
+        {registerDone && mode === "register" ? (
+          <div className={styles.form}>
+            <p className={styles.subtitle}>
+              Мы отправили письмо со ссылкой на{" "}
+              <strong>{email}</strong>. Перейдите по ссылке, затем войдите с
+              паролем.
+            </p>
+            {info ? (
+              <p
+                className={styles.subtitle}
+                style={{ color: "var(--color-success, #2d7a3e)" }}
+              >
+                {info}
+              </p>
+            ) : null}
+            <button
+              type="button"
+              className={styles.button}
+              disabled={resendLoading}
+              onClick={handleResend}
+            >
+              {resendLoading ? "Отправка…" : "Отправить письмо ещё раз"}
+            </button>
+          </div>
+        ) : null}
+
+        {!registerDone || mode !== "register" ? (
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.formGroup}>
             <label htmlFor="email" className={styles.label}>
@@ -122,6 +190,11 @@ export default function Auth() {
           </div>
 
           {error && <div className={styles.error}>{error}</div>}
+          {info && !error && (
+            <div className={styles.subtitle} style={{ color: "var(--color-success, #2d7a3e)" }}>
+              {info}
+            </div>
+          )}
 
           <button type="submit" className={styles.button} disabled={loading}>
             {loading
@@ -131,6 +204,28 @@ export default function Auth() {
                 : "Зарегистрироваться"}
           </button>
         </form>
+        ) : null}
+
+        {mode === "login" && (
+          <p className={styles.footerHint} style={{ marginTop: "1rem" }}>
+            Не пришло письмо после регистрации?{" "}
+            <button
+              type="button"
+              className={styles.tab}
+              style={{
+                border: "none",
+                background: "none",
+                cursor: "pointer",
+                textDecoration: "underline",
+                padding: 0,
+              }}
+              disabled={resendLoading}
+              onClick={handleResend}
+            >
+              Отправить ссылку снова
+            </button>
+          </p>
+        )}
 
         <p className={styles.footerHint}>
           После входа подключите Telegram в разделе «Настройки», чтобы работать

@@ -1,6 +1,7 @@
 import { httpClient } from "./httpClient";
 import type {
   AuthTokenResponse,
+  RegisterPendingResponse,
   SessionState,
   TelegramInitResponse,
   User,
@@ -17,14 +18,38 @@ function persistToken(token: string) {
   localStorage.setItem("jwt_token", token);
 }
 
+const emailVerifyByToken = new Map<string, Promise<string>>();
+
 export const authService = {
-  async register(email: string, password: string): Promise<string> {
-    const response = await httpClient.post<AuthTokenResponse>(
-      "/auth/register",
-      { email, password },
-    );
-    persistToken(response.token);
-    return response.token;
+  async register(email: string, password: string): Promise<RegisterPendingResponse> {
+    return httpClient.post<RegisterPendingResponse>("/auth/register", {
+      email,
+      password,
+    });
+  },
+
+  async verifyEmailFromQueryToken(token: string): Promise<string> {
+    const key = token.trim();
+    const cached = emailVerifyByToken.get(key);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const p = (async () => {
+      const response = await httpClient.get<AuthTokenResponse>(
+        `/auth/verify-email?token=${encodeURIComponent(key)}`,
+      );
+      persistToken(response.token);
+      return response.token;
+    })();
+    emailVerifyByToken.set(key, p);
+    p.catch(() => {
+      emailVerifyByToken.delete(key);
+    });
+    return p;
+  },
+
+  async resendVerificationEmail(email: string): Promise<void> {
+    await httpClient.postVoid("/auth/resend-verification", { email });
   },
 
   async login(email: string, password: string): Promise<string> {

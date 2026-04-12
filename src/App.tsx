@@ -3,6 +3,7 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import MainLayout from "./components/MainLayout";
 import Auth from "./pages/Auth";
+import VerifyEmail from "./pages/VerifyEmail";
 import ConnectTelegram from "./pages/ConnectTelegram";
 import Scenarios from "./pages/Scenarios";
 import Chats from "./pages/Chats";
@@ -14,6 +15,7 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/auth" element={<Auth />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
 
           <Route
             path="/"

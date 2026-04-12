@@ -83,6 +83,33 @@ export class HttpClient {
     return response.json();
   }
 
+  async postVoid(endpoint: string, data?: unknown): Promise<void> {
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      method: "POST",
+      headers: this.getHeaders(),
+      body: data ? JSON.stringify(data) : undefined,
+    });
+
+    if (!response.ok) {
+      this.handleUnauthorized(response.status);
+      let message = `HTTP ${response.status}: ${response.statusText}`;
+      try {
+        const errBody: unknown = await response.json();
+        if (
+          errBody &&
+          typeof errBody === "object" &&
+          "error" in errBody &&
+          typeof (errBody as { error: unknown }).error === "string"
+        ) {
+          message = (errBody as { error: string }).error;
+        }
+      } catch {
+        /* ignore */
+      }
+      throw new ApiError(response.status, message);
+    }
+  }
+
   async put<T>(endpoint: string, data: unknown): Promise<T> {
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: "PUT",

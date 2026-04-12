@@ -1,6 +1,7 @@
 export interface User {
   id: string;
   email?: string;
+  email_verified?: boolean;
   phone_number?: string;
   first_name?: string;
   last_name?: string;
@@ -20,6 +21,12 @@ export interface SessionState {
 
 export interface AuthTokenResponse {
   token: string;
+  token_type?: string;
+  expires_in?: number;
+}
+
+export interface RegisterPendingResponse {
+  message: string;
 }
 
 export interface TelegramInitResponse {

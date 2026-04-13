@@ -14,8 +14,17 @@ const LEGACY_TELEGRAM_KEY = "reaction_telegram_messenger_account_id";
 const CHATS_MESSENGER_ACCOUNT_STORAGE_KEY =
   "reaction_chats_messenger_account_id";
 
+const REFRESH_TOKEN_KEY = "refresh_token";
+
 function persistToken(token: string) {
   localStorage.setItem("jwt_token", token);
+}
+
+function persistTokenPair(accessToken: string, refreshToken?: string) {
+  localStorage.setItem("jwt_token", accessToken);
+  if (refreshToken) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  }
 }
 
 const emailVerifyByToken = new Map<string, Promise<string>>();
@@ -38,7 +47,7 @@ export const authService = {
       const response = await httpClient.get<AuthTokenResponse>(
         `/auth/verify-email?token=${encodeURIComponent(key)}`,
       );
-      persistToken(response.token);
+      persistTokenPair(response.token, response.refresh_token);
       return response.token;
     })();
     emailVerifyByToken.set(key, p);
@@ -57,7 +66,20 @@ export const authService = {
       email,
       password,
     });
-    persistToken(response.token);
+    persistTokenPair(response.token, response.refresh_token);
+    return response.token;
+  },
+
+  async refreshTokens(): Promise<string> {
+    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+    if (!refreshToken) {
+      throw new Error("No refresh token available");
+    }
+    const response = await httpClient.postSkipRefresh<AuthTokenResponse>(
+      "/auth/refresh",
+      { refresh_token: refreshToken },
+    );
+    persistTokenPair(response.token, response.refresh_token);
     return response.token;
   },
 
@@ -144,6 +166,7 @@ export const authService = {
 
   clearSession(): void {
     localStorage.removeItem("jwt_token");
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
     sessionStorage.removeItem(TELEGRAM_CONNECT_WIP_KEY);
     sessionStorage.removeItem(LEGACY_TELEGRAM_KEY);
     sessionStorage.removeItem(CHATS_MESSENGER_ACCOUNT_STORAGE_KEY);

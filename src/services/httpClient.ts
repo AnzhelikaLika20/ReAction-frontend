@@ -11,8 +11,19 @@ export class ApiError extends Error {
   }
 }
 
+async function tryRefreshTokens(): Promise<boolean> {
+  try {
+    const { authService } = await import("./authService");
+    await authService.refreshTokens();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export class HttpClient {
   private baseUrl: string;
+  private refreshPromise: Promise<boolean> | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -31,13 +42,32 @@ export class HttpClient {
     return headers;
   }
 
-  private handleUnauthorized(status: number): void {
-    if (status === 401) {
-      localStorage.removeItem("jwt_token");
-      if (window.location.pathname !== "/auth") {
-        window.location.href = "/auth";
-      }
+  private redirectToAuth(): void {
+    localStorage.removeItem("jwt_token");
+    localStorage.removeItem("refresh_token");
+    if (window.location.pathname !== "/auth") {
+      window.location.href = "/auth";
     }
+  }
+
+  private async handleUnauthorized(): Promise<boolean> {
+    const refreshToken = localStorage.getItem("refresh_token");
+    if (!refreshToken) {
+      this.redirectToAuth();
+      return false;
+    }
+
+    if (!this.refreshPromise) {
+      this.refreshPromise = tryRefreshTokens().finally(() => {
+        this.refreshPromise = null;
+      });
+    }
+
+    const ok = await this.refreshPromise;
+    if (!ok) {
+      this.redirectToAuth();
+    }
+    return ok;
   }
 
   async get<T>(endpoint: string): Promise<T> {
@@ -46,9 +76,16 @@ export class HttpClient {
       headers: this.getHeaders(),
     });
 
+    if (response.status === 401) {
+      const retry = await this.handleUnauthorized();
+      if (retry) {
+        return this.get<T>(endpoint);
+      }
+      throw new ApiError(401, "Unauthorized");
+    }
+
     if (!response.ok) {
-      this.handleUnauthorized(response.status);
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      throw new ApiError(response.status, `HTTP ${response.status}: ${response.statusText}`);
     }
 
     return response.json();
@@ -61,8 +98,43 @@ export class HttpClient {
       body: data ? JSON.stringify(data) : undefined,
     });
 
+    if (response.status === 401) {
+      const retry = await this.handleUnauthorized();
+      if (retry) {
+        return this.post<T>(endpoint, data);
+      }
+      throw new ApiError(401, "Unauthorized");
+    }
+
     if (!response.ok) {
-      this.handleUnauthorized(response.status);
+      let message = `HTTP ${response.status}: ${response.statusText}`;
+      try {
+        const errBody: unknown = await response.json();
+        if (
+          errBody &&
+          typeof errBody === "object" &&
+          "error" in errBody &&
+          typeof (errBody as { error: unknown }).error === "string"
+        ) {
+          message = (errBody as { error: string }).error;
+        }
+      } catch {
+        /* ignore non-JSON body */
+      }
+      throw new ApiError(response.status, message);
+    }
+
+    return response.json();
+  }
+
+  async postSkipRefresh<T>(endpoint: string, data?: unknown): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      method: "POST",
+      headers: this.getHeaders(),
+      body: data ? JSON.stringify(data) : undefined,
+    });
+
+    if (!response.ok) {
       let message = `HTTP ${response.status}: ${response.statusText}`;
       try {
         const errBody: unknown = await response.json();
@@ -90,8 +162,15 @@ export class HttpClient {
       body: data ? JSON.stringify(data) : undefined,
     });
 
+    if (response.status === 401) {
+      const retry = await this.handleUnauthorized();
+      if (retry) {
+        return this.postVoid(endpoint, data);
+      }
+      throw new ApiError(401, "Unauthorized");
+    }
+
     if (!response.ok) {
-      this.handleUnauthorized(response.status);
       let message = `HTTP ${response.status}: ${response.statusText}`;
       try {
         const errBody: unknown = await response.json();
@@ -117,9 +196,16 @@ export class HttpClient {
       body: JSON.stringify(data),
     });
 
+    if (response.status === 401) {
+      const retry = await this.handleUnauthorized();
+      if (retry) {
+        return this.put<T>(endpoint, data);
+      }
+      throw new ApiError(401, "Unauthorized");
+    }
+
     if (!response.ok) {
-      this.handleUnauthorized(response.status);
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      throw new ApiError(response.status, `HTTP ${response.status}: ${response.statusText}`);
     }
 
     return response.json();
@@ -131,9 +217,16 @@ export class HttpClient {
       headers: this.getHeaders(),
     });
 
+    if (response.status === 401) {
+      const retry = await this.handleUnauthorized();
+      if (retry) {
+        return this.delete(endpoint);
+      }
+      throw new ApiError(401, "Unauthorized");
+    }
+
     if (!response.ok) {
-      this.handleUnauthorized(response.status);
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      throw new ApiError(response.status, `HTTP ${response.status}: ${response.statusText}`);
     }
   }
 
@@ -145,8 +238,15 @@ export class HttpClient {
       body: JSON.stringify(data),
     });
 
+    if (response.status === 401) {
+      const retry = await this.handleUnauthorized();
+      if (retry) {
+        return this.deleteJson(endpoint, data);
+      }
+      throw new ApiError(401, "Unauthorized");
+    }
+
     if (!response.ok) {
-      this.handleUnauthorized(response.status);
       let message = `HTTP ${response.status}: ${response.statusText}`;
       try {
         const errBody: unknown = await response.json();
@@ -171,9 +271,16 @@ export class HttpClient {
       headers: this.getHeaders(),
     });
 
+    if (response.status === 401) {
+      const retry = await this.handleUnauthorized();
+      if (retry) {
+        return this.downloadFile(endpoint);
+      }
+      throw new ApiError(401, "Unauthorized");
+    }
+
     if (!response.ok) {
-      this.handleUnauthorized(response.status);
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      throw new ApiError(response.status, `HTTP ${response.status}: ${response.statusText}`);
     }
 
     return response.blob();

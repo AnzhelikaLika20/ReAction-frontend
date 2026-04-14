@@ -85,7 +85,10 @@ export class HttpClient {
     }
 
     if (!response.ok) {
-      throw new ApiError(response.status, `HTTP ${response.status}: ${response.statusText}`);
+      throw new ApiError(
+        response.status,
+        `HTTP ${response.status}: ${response.statusText}`,
+      );
     }
 
     return response.json();
@@ -205,7 +208,10 @@ export class HttpClient {
     }
 
     if (!response.ok) {
-      throw new ApiError(response.status, `HTTP ${response.status}: ${response.statusText}`);
+      throw new ApiError(
+        response.status,
+        `HTTP ${response.status}: ${response.statusText}`,
+      );
     }
 
     return response.json();
@@ -226,7 +232,10 @@ export class HttpClient {
     }
 
     if (!response.ok) {
-      throw new ApiError(response.status, `HTTP ${response.status}: ${response.statusText}`);
+      throw new ApiError(
+        response.status,
+        `HTTP ${response.status}: ${response.statusText}`,
+      );
     }
   }
 
@@ -280,7 +289,10 @@ export class HttpClient {
     }
 
     if (!response.ok) {
-      throw new ApiError(response.status, `HTTP ${response.status}: ${response.statusText}`);
+      throw new ApiError(
+        response.status,
+        `HTTP ${response.status}: ${response.statusText}`,
+      );
     }
 
     return response.blob();

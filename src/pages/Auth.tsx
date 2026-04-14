@@ -124,9 +124,8 @@ export default function Auth() {
         {registerDone && mode === "register" ? (
           <div className={styles.form}>
             <p className={styles.subtitle}>
-              Мы отправили письмо со ссылкой на{" "}
-              <strong>{email}</strong>. Перейдите по ссылке, затем войдите с
-              паролем.
+              Мы отправили письмо со ссылкой на <strong>{email}</strong>.
+              Перейдите по ссылке, затем войдите с паролем.
             </p>
             {info ? (
               <p
@@ -148,62 +147,65 @@ export default function Auth() {
         ) : null}
 
         {!registerDone || mode !== "register" ? (
-        <form onSubmit={handleSubmit} className={styles.form}>
-          <div className={styles.formGroup}>
-            <label htmlFor="email" className={styles.label}>
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className={styles.input}
-              required
-              autoComplete="email"
-              disabled={loading}
-            />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label htmlFor="password" className={styles.label}>
-              Пароль
-              {mode === "register" && (
-                <span className={styles.hint}> (минимум 8 символов)</span>
-              )}
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className={styles.input}
-              required
-              minLength={mode === "register" ? 8 : undefined}
-              autoComplete={
-                mode === "register" ? "new-password" : "current-password"
-              }
-              disabled={loading}
-            />
-          </div>
-
-          {error && <div className={styles.error}>{error}</div>}
-          {info && !error && (
-            <div className={styles.subtitle} style={{ color: "var(--color-success, #2d7a3e)" }}>
-              {info}
+          <form onSubmit={handleSubmit} className={styles.form}>
+            <div className={styles.formGroup}>
+              <label htmlFor="email" className={styles.label}>
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className={styles.input}
+                required
+                autoComplete="email"
+                disabled={loading}
+              />
             </div>
-          )}
 
-          <button type="submit" className={styles.button} disabled={loading}>
-            {loading
-              ? "Подождите..."
-              : mode === "login"
-                ? "Войти"
-                : "Зарегистрироваться"}
-          </button>
-        </form>
+            <div className={styles.formGroup}>
+              <label htmlFor="password" className={styles.label}>
+                Пароль
+                {mode === "register" && (
+                  <span className={styles.hint}> (минимум 8 символов)</span>
+                )}
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className={styles.input}
+                required
+                minLength={mode === "register" ? 8 : undefined}
+                autoComplete={
+                  mode === "register" ? "new-password" : "current-password"
+                }
+                disabled={loading}
+              />
+            </div>
+
+            {error && <div className={styles.error}>{error}</div>}
+            {info && !error && (
+              <div
+                className={styles.subtitle}
+                style={{ color: "var(--color-success, #2d7a3e)" }}
+              >
+                {info}
+              </div>
+            )}
+
+            <button type="submit" className={styles.button} disabled={loading}>
+              {loading
+                ? "Подождите..."
+                : mode === "login"
+                  ? "Войти"
+                  : "Зарегистрироваться"}
+            </button>
+          </form>
         ) : null}
 
         {mode === "login" && (

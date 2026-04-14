@@ -16,10 +16,6 @@ const CHATS_MESSENGER_ACCOUNT_STORAGE_KEY =
 
 const REFRESH_TOKEN_KEY = "refresh_token";
 
-function persistToken(token: string) {
-  localStorage.setItem("jwt_token", token);
-}
-
 function persistTokenPair(accessToken: string, refreshToken?: string) {
   localStorage.setItem("jwt_token", accessToken);
   if (refreshToken) {
@@ -30,7 +26,10 @@ function persistTokenPair(accessToken: string, refreshToken?: string) {
 const emailVerifyByToken = new Map<string, Promise<string>>();
 
 export const authService = {
-  async register(email: string, password: string): Promise<RegisterPendingResponse> {
+  async register(
+    email: string,
+    password: string,
+  ): Promise<RegisterPendingResponse> {
     return httpClient.post<RegisterPendingResponse>("/auth/register", {
       email,
       password,

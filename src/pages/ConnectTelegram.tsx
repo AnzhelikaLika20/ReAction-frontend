@@ -147,8 +147,17 @@ export default function ConnectTelegram() {
         navigate("/settings");
         return;
       }
+      if (status?.auth_state === "wait_code") {
+        setStep("code");
+        return;
+      }
+      if (status?.auth_state === "wait_password") {
+        setStep("password");
+        return;
+      }
       if (err instanceof ApiError && err.status === 409) {
         startNewAccountFlow();
+        return;
       }
       setError(
         err instanceof Error && err.message

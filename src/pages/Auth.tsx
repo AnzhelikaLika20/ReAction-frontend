@@ -230,8 +230,8 @@ export default function Auth() {
         )}
 
         <p className={styles.footerHint}>
-          После входа подключите Telegram в разделе «Настройки», чтобы работать
-          с чатами.
+          После входа подключите Telegram в разделе «Настройки» для работы
+          Re:Action с чатами.
         </p>
       </div>
     </div>

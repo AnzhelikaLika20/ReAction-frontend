@@ -11,10 +11,9 @@ const STORAGE_KEY = "reaction_chats_messenger_account_id";
 function selectOptionLabel(a: MessengerAccount): string {
   const prov = a.provider === "telegram" ? "Telegram" : a.provider;
   const lbl = (a.label && a.label.trim()) || "без номера";
-  const active = a.is_active_for_session ? " · клиент на сервере" : "";
   const pending =
     a.connection_status === "pending" ? " · подключение не завершено" : "";
-  return `${prov} — ${lbl}${pending}${active}`;
+  return `${prov} — ${lbl}${pending}`;
 }
 
 export default function Chats() {
@@ -228,7 +227,7 @@ export default function Chats() {
       <div className={styles.header}>
         <h1 className={styles.title}>Управление чатами</h1>
         <p className={styles.subtitle}>
-          Выберите аккаунт мессенджера и отметьте чаты для анализа и напоминаний
+          Выберите аккаунт и отметьте чаты, разрешенные для анализа
         </p>
       </div>
 

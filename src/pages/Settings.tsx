@@ -182,8 +182,7 @@ export default function Settings() {
           <>
             <p className={styles.calendarHint}>
               Добавьте подписной календарь по этой ссылке в ваше календарное
-              приложение, чтобы получать видеть события Re:Action и получать
-              уведомления.
+              приложение, чтобы разрешить Re:Action добавлять новые события.
             </p>
             <button
               type="button"
@@ -204,11 +203,9 @@ export default function Settings() {
           Мессенджеры
         </h2>
         <p className={styles.calendarHint}>
-          Подключите один или несколько аккаунтов Telegram — каждый проходит
-          отдельный вход по номеру. Аккаунт со статусом «ожидание подключения»
-          можно нажать, чтобы продолжить ввод номера, кода или пароля. Список
-          чатов доступен для аккаунтов, у которых на сервере запущен клиент
-          (пометка «клиент на сервере» на странице чатов).
+          Подключите один или несколько аккаунтов Telegram. Выбор списка чатов,
+          с которыми может работать приложение, доступен во вкладке Управление
+          чатами.
         </p>
         {messengerLoading && (
           <p className={styles.calendarLoading}>Загрузка аккаунтов...</p>
@@ -218,13 +215,7 @@ export default function Settings() {
             {messengerError}
           </div>
         )}
-        {!messengerLoading &&
-          !messengerError &&
-          messengerAccounts.length === 0 && (
-            <p className={styles.messengerEmpty}>
-              Пока нет аккаунтов мессенджеров.
-            </p>
-          )}
+
         {!messengerLoading &&
           !messengerError &&
           messengerAccounts.length > 0 && (
@@ -267,7 +258,6 @@ export default function Settings() {
                         {messengerTitle(a)}
                       </div>
                       <div className={styles.messengerCardMeta}>
-                        ID: {a.id.slice(0, 8)}…
                         {isPending && (
                           <span className={styles.messengerContinueHint}>
                             {" "}
@@ -287,13 +277,6 @@ export default function Settings() {
                         >
                           {messengerStatusLabel(a.connection_status)}
                         </span>
-                        {a.is_active_for_session && (
-                          <span
-                            className={`${styles.badge} ${styles.badgeActive}`}
-                          >
-                            Клиент на сервере
-                          </span>
-                        )}
                       </div>
                       <button
                         type="button"
@@ -313,9 +296,13 @@ export default function Settings() {
               })}
             </ul>
           )}
-        <Link to="/connect-telegram" className={styles.copyButton}>
+        <button
+          type="button"
+          className={styles.copyButton}
+          onClick={() => navigate("/connect-telegram")}
+        >
           Подключить Telegram
-        </Link>
+        </button>
       </div>
 
       <div className={styles.section}>
@@ -348,12 +335,7 @@ export default function Settings() {
             </div>
           )}
 
-          <div className={styles.profileField}>
-            <div className={styles.profileLabel}>Телефон (Telegram)</div>
-            <div className={styles.profileValue}>
-              {user?.phone_number || "Не подключён"}
-            </div>
-          </div>
+          <div className={styles.profileField}></div>
         </div>
 
         <button
@@ -369,7 +351,7 @@ export default function Settings() {
           <h3 className={styles.profileLabel}>Удаление аккаунта</h3>
           <p className={styles.deleteAccountHint}>
             Полное удаление учётной записи на сервере. Потребуется текущий
-            пароль от входа по email.
+            пароль от профиля в приложении.
           </p>
           <form onSubmit={(e) => void handleDeleteAccountSubmit(e)}>
             <input

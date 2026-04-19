@@ -243,9 +243,8 @@ export default function ConnectTelegram() {
 
         <h2 className={styles.title}>Подключение Telegram</h2>
         <p className={styles.subtitle}>
-          Каждый запуск подключения создаёт отдельный клиент на сервере. Можно
-          открыть несколько вкладок или нажать «другой номер» — параллельно идут
-          независимые потоки входа.
+          Для подключения аккаунта Telegram необходимо подтвердить владение
+          аккаунтом.
         </p>
 
         {step === "phone" && (
@@ -268,15 +267,6 @@ export default function ConnectTelegram() {
             {error && <div className={styles.error}>{error}</div>}
             <button type="submit" className={styles.button} disabled={loading}>
               {loading ? "Отправка..." : "Получить код"}
-            </button>
-            <button
-              type="button"
-              className={styles.textButton}
-              style={{ marginTop: "1rem", display: "block" }}
-              onClick={startNewAccountFlow}
-              disabled={loading}
-            >
-              Подключить другой номер (новый клиент)
             </button>
           </form>
         )}
@@ -310,7 +300,7 @@ export default function ConnectTelegram() {
               onClick={startNewAccountFlow}
               disabled={loading}
             >
-              Другой номер (новый клиент)
+              Использовать другой номер
             </button>
           </form>
         )}

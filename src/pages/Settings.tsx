@@ -21,7 +21,7 @@ function messengerStatusLabel(status: string): string {
     case "connected":
       return "Подключён";
     case "pending":
-      return "Ожидание подключения";
+      return "Не активен";
     default:
       return status;
   }

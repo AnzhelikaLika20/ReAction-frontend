@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect } from "react";
 import { Plus, Edit, Trash2, X } from "lucide-react";
 import { scenarioService } from "../services/scenarioService";
 import type { Scenario } from "../types";
@@ -12,6 +12,33 @@ export default function Scenarios() {
   const [modalMode, setModalMode] = useState<ModalMode>("create");
   const [currentScenario, setCurrentScenario] = useState<Scenario | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useLayoutEffect(() => {
+    if (isModalOpen) {
+      document.documentElement.classList.add('modal-open');
+      document.body.classList.add('modal-open');
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+    } else {
+      document.documentElement.classList.remove('modal-open');
+      document.body.classList.remove('modal-open');
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    }
+
+    return () => {
+      document.documentElement.classList.remove('modal-open');
+      document.body.classList.remove('modal-open');
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    };
+  }, [isModalOpen]);
 
   const [formData, setFormData] = useState({
     name: "",

@@ -9,7 +9,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { authService, TELEGRAM_CONNECT_WIP_KEY } from "../services/authService";
 import { ApiError } from "../services/httpClient";
 import { useAuth } from "../context/AuthContext";
-import styles from "./Auth.module.css";
+import styles from "./ConnectTelegram.module.css";
 
 export default function ConnectTelegram() {
   const navigate = useNavigate();
@@ -235,7 +235,7 @@ export default function ConnectTelegram() {
   }
 
   return (
-    <div className={styles.container}>
+    <div className={`${styles.container} connectTelegramContainer}`}>
       <div className={styles.card}>
         <div className={styles.logo}>
           <h1 className={styles.logoText}>Re:Action</h1>

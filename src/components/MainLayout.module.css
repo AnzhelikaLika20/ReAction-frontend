@@ -113,9 +113,13 @@ body.modal-open .header {
   touch-action: pan-y;
 }
 
-body.modal-open .content {
-  overflow: hidden;
-  padding-top: 0;
+body.modal-open .content,
+.connectTelegramContainer .content {
+  overflow: hidden !important;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.connectTelegramContainer {
 }
 
 .bottomNav {

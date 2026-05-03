@@ -60,6 +60,19 @@ export const authService = {
     await httpClient.postVoid("/auth/resend-verification", { email });
   },
 
+  async requestPasswordReset(email: string): Promise<void> {
+    await httpClient.postVoid("/auth/forgot-password", { email });
+  },
+
+  async resetPasswordWithToken(token: string, password: string): Promise<string> {
+    const response = await httpClient.postSkipRefresh<AuthTokenResponse>(
+      "/auth/reset-password",
+      { token: token.trim(), password },
+    );
+    persistTokenPair(response.token, response.refresh_token);
+    return response.token;
+  },
+
   async login(email: string, password: string): Promise<string> {
     const response = await httpClient.post<AuthTokenResponse>("/auth/login", {
       email,

@@ -4,6 +4,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import MainLayout from "./components/MainLayout";
 import Auth from "./pages/Auth";
 import VerifyEmail from "./pages/VerifyEmail";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import ConnectTelegram from "./pages/ConnectTelegram";
 import Scenarios from "./pages/Scenarios";
 import Chats from "./pages/Chats";
@@ -16,6 +18,8 @@ function App() {
         <Routes>
           <Route path="/auth" element={<Auth />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           <Route
             path="/"

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
 import { ApiError } from "../services/httpClient";
@@ -186,6 +186,11 @@ export default function Auth() {
                 }
                 disabled={loading}
               />
+              {mode === "login" && (
+                <p className={styles.forgotPasswordRow}>
+                  <Link to="/forgot-password">Забыли пароль?</Link>
+                </p>
+              )}
             </div>
 
             {error && <div className={styles.error}>{error}</div>}
@@ -213,14 +218,7 @@ export default function Auth() {
             Не пришло письмо после регистрации?{" "}
             <button
               type="button"
-              className={styles.tab}
-              style={{
-                border: "none",
-                background: "none",
-                cursor: "pointer",
-                textDecoration: "underline",
-                padding: 0,
-              }}
+              className={styles.footerHintButton}
               disabled={resendLoading}
               onClick={handleResend}
             >
@@ -232,6 +230,11 @@ export default function Auth() {
         <p className={styles.footerHint}>
           После входа подключите Telegram в разделе «Настройки» для работы
           Re:Action с чатами.
+        </p>
+        <p className={styles.privacyNotice}>
+          Приложение может обрабатывать данные переписки в подключённом
+          мессенджере, но не сохраняет содержимое
+          переписки.
         </p>
       </div>
     </div>

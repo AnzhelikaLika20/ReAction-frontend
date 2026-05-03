@@ -55,6 +55,32 @@
   gap: 0.5rem;
 }
 
+.forgotPasswordRow {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: #718096;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.forgotPasswordRow a {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.forgotPasswordRow a:hover {
+  color: #4a5568;
+}
+
+.forgotPasswordRow a:focus-visible {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 .label {
   font-size: 0.875rem;
   font-weight: 500;
@@ -146,6 +172,68 @@
   color: #718096;
   text-align: center;
   line-height: 1.4;
+}
+
+.privacyNotice {
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  color: #718096;
+  text-align: center;
+  line-height: 1.5;
+  max-width: 22rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.footerHint a,
+.subtitle a {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.footerHint a:hover,
+.subtitle a:hover {
+  color: #4a5568;
+}
+
+.footerHint a:focus-visible,
+.subtitle a:focus-visible {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.footerHintButton {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.footerHintButton:hover:not(:disabled) {
+  color: #4a5568;
+}
+
+.footerHintButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.footerHintButton:focus-visible {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .textButton {

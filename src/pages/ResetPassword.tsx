@@ -3,6 +3,10 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { authService } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
 import { ApiError } from "../services/httpClient";
+import {
+  CREDENTIAL_PASSWORD_HINT,
+  getCredentialPasswordError,
+} from "../utils/passwordPolicy";
 import styles from "./Auth.module.css";
 
 export default function ResetPassword() {
@@ -19,8 +23,9 @@ export default function ResetPassword() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (password.length < 8) {
-      setError("Пароль должен быть не короче 8 символов.");
+    const pwdErr = getCredentialPasswordError(password);
+    if (pwdErr) {
+      setError(pwdErr);
       return;
     }
     if (password !== confirm) {
@@ -39,9 +44,14 @@ export default function ResetPassword() {
       navigate("/", { replace: true });
     } catch (err) {
       if (err instanceof ApiError && err.status === 400) {
-        setError(
-          "Ссылка недействительна или устарела. Запросите восстановление пароля снова.",
-        );
+        const msg = err.message.toLowerCase();
+        if (msg.includes("invalid") || msg.includes("expired")) {
+          setError(
+            "Ссылка недействительна или устарела. Запросите восстановление пароля снова.",
+          );
+        } else {
+          setError(err.message);
+        }
       } else {
         setError("Не удалось сменить пароль. Попробуйте позже.");
       }
@@ -80,7 +90,7 @@ export default function ResetPassword() {
           <div className={styles.formGroup}>
             <label htmlFor="password" className={styles.label}>
               Новый пароль
-              <span className={styles.hint}> (минимум 8 символов)</span>
+              <span className={styles.hint}> ({CREDENTIAL_PASSWORD_HINT})</span>
             </label>
             <input
               id="password"

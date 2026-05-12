@@ -3,6 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
 import { ApiError } from "../services/httpClient";
+import {
+  CREDENTIAL_PASSWORD_HINT,
+  getCredentialPasswordError,
+} from "../utils/passwordPolicy";
 import styles from "./Auth.module.css";
 
 type Mode = "login" | "register";
@@ -28,6 +32,12 @@ export default function Auth() {
 
     try {
       if (mode === "register") {
+        const pwdErr = getCredentialPasswordError(password);
+        if (pwdErr) {
+          setError(pwdErr);
+          setLoading(false);
+          return;
+        }
         await authService.register(email, password);
         setRegisterDone(true);
       } else {
@@ -39,6 +49,8 @@ export default function Auth() {
       if (mode === "register") {
         if (err instanceof ApiError && err.status === 409) {
           setError("Этот email уже зарегистрирован.");
+        } else if (err instanceof ApiError && err.status === 400) {
+          setError(err.message);
         } else {
           setError(
             "Не удалось зарегистрироваться. Проверьте данные или попробуйте позже.",
@@ -169,7 +181,7 @@ export default function Auth() {
               <label htmlFor="password" className={styles.label}>
                 Пароль
                 {mode === "register" && (
-                  <span className={styles.hint}> (минимум 8 символов)</span>
+                  <span className={styles.hint}> ({CREDENTIAL_PASSWORD_HINT})</span>
                 )}
               </label>
               <input

@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      if (!authService.isAuthenticated()) {
+      if (!(await authService.restoreSession())) {
         setIsAuthenticated(false);
         setUser(null);
         setSessionState(null);

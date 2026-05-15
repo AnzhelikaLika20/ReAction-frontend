@@ -11,6 +11,20 @@ export class ApiError extends Error {
   }
 }
 
+const AUTH_ENDPOINTS_NO_REFRESH = new Set([
+  "/auth/login",
+  "/auth/register",
+  "/auth/refresh",
+  "/auth/forgot-password",
+  "/auth/resend-verification",
+  "/auth/reset-password",
+]);
+
+function shouldRefreshOn401(endpoint: string): boolean {
+  const path = endpoint.split("?")[0];
+  return !AUTH_ENDPOINTS_NO_REFRESH.has(path);
+}
+
 async function tryRefreshTokens(): Promise<boolean> {
   try {
     const { authService } = await import("./authService");
@@ -76,11 +90,15 @@ export class HttpClient {
       headers: this.getHeaders(),
     });
 
-    if (response.status === 401) {
+    if (response.status === 401 && shouldRefreshOn401(endpoint)) {
       const retry = await this.handleUnauthorized();
       if (retry) {
         return this.get<T>(endpoint);
       }
+      throw new ApiError(401, "Unauthorized");
+    }
+
+    if (response.status === 401) {
       throw new ApiError(401, "Unauthorized");
     }
 
@@ -101,12 +119,30 @@ export class HttpClient {
       body: data ? JSON.stringify(data) : undefined,
     });
 
-    if (response.status === 401) {
+    if (response.status === 401 && shouldRefreshOn401(endpoint)) {
       const retry = await this.handleUnauthorized();
       if (retry) {
         return this.post<T>(endpoint, data);
       }
       throw new ApiError(401, "Unauthorized");
+    }
+
+    if (response.status === 401) {
+      let message = "Unauthorized";
+      try {
+        const errBody: unknown = await response.json();
+        if (
+          errBody &&
+          typeof errBody === "object" &&
+          "error" in errBody &&
+          typeof (errBody as { error: unknown }).error === "string"
+        ) {
+          message = (errBody as { error: string }).error;
+        }
+      } catch {
+        /* ignore */
+      }
+      throw new ApiError(401, message);
     }
 
     if (!response.ok) {

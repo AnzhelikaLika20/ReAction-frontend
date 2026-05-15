@@ -1,4 +1,4 @@
-import { httpClient } from "./httpClient";
+import { httpClient, ApiError } from "./httpClient";
 import type {
   AuthTokenResponse,
   RegisterPendingResponse,
@@ -15,6 +15,13 @@ const CHATS_MESSENGER_ACCOUNT_STORAGE_KEY =
   "reaction_chats_messenger_account_id";
 
 const REFRESH_TOKEN_KEY = "refresh_token";
+
+const TELEGRAM_AUTH_POLL_MS = 400;
+const TELEGRAM_AUTH_PHASE_MS = 5 * 60 * 1000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function persistTokenPair(accessToken: string, refreshToken?: string) {
   localStorage.setItem("jwt_token", accessToken);
@@ -74,10 +81,13 @@ export const authService = {
   },
 
   async login(email: string, password: string): Promise<string> {
-    const response = await httpClient.post<AuthTokenResponse>("/auth/login", {
-      email,
-      password,
-    });
+    const response = await httpClient.postSkipRefresh<AuthTokenResponse>(
+      "/auth/login",
+      {
+        email,
+        password,
+      },
+    );
     persistTokenPair(response.token, response.refresh_token);
     return response.token;
   },
@@ -106,39 +116,102 @@ export const authService = {
     return res.messenger_account_id;
   },
 
-  async sendPhone(phone: string, messengerAccountId: string): Promise<void> {
-    await httpClient.post("/auth/telegram/phone", {
-      phone_number: phone,
-      messenger_account_id: messengerAccountId,
-    });
-    await this.waitForStatusChange(messengerAccountId, "wait_code", 5, 1000);
+  async waitUntilAuthStates(
+    messengerAccountId: string,
+    accepted: SessionState["auth_state"][],
+    phaseEndMs: number = Date.now() + TELEGRAM_AUTH_PHASE_MS,
+  ): Promise<SessionState> {
+    let last: SessionState = { auth_state: "unknown" };
+    while (Date.now() < phaseEndMs) {
+      try {
+        last = await this.getSessionStatusForMessenger(messengerAccountId);
+        if (accepted.includes(last.auth_state)) {
+          return last;
+        }
+      } catch {
+      }
+      await sleep(TELEGRAM_AUTH_POLL_MS);
+    }
+    return last;
   },
 
-  async sendCode(code: string, messengerAccountId: string): Promise<void> {
+  async runTelegramPhonePhase(
+    phone: string,
+    messengerAccountId: string,
+  ): Promise<SessionState> {
+    const phaseEnd = Date.now() + TELEGRAM_AUTH_PHASE_MS;
+
+    let s = await this.waitUntilAuthStates(
+      messengerAccountId,
+      ["wait_phone", "wait_code", "wait_password", "ready"],
+      phaseEnd,
+    );
+
+    if (s.auth_state !== "wait_phone") {
+      return s;
+    }
+
+    while (Date.now() < phaseEnd) {
+      try {
+        await httpClient.post("/auth/telegram/phone", {
+          phone_number: phone,
+          messenger_account_id: messengerAccountId,
+        });
+        break;
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 409) {
+          throw e;
+        }
+        await sleep(TELEGRAM_AUTH_POLL_MS);
+        try {
+          s = await this.getSessionStatusForMessenger(messengerAccountId);
+        } catch {
+        }
+        if (
+          s.auth_state === "wait_code" ||
+          s.auth_state === "wait_password" ||
+          s.auth_state === "ready"
+        ) {
+          return s;
+        }
+      }
+    }
+
+    if (Date.now() >= phaseEnd) {
+      return s;
+    }
+
+    return await this.waitUntilAuthStates(
+      messengerAccountId,
+      ["wait_code", "wait_password", "ready"],
+      phaseEnd,
+    );
+  },
+
+  async sendPhone(phone: string, messengerAccountId: string): Promise<SessionState> {
+    return this.runTelegramPhonePhase(phone, messengerAccountId);
+  },
+
+  async sendCode(code: string, messengerAccountId: string): Promise<SessionState> {
     await httpClient.post("/auth/telegram/code", {
       code,
       messenger_account_id: messengerAccountId,
     });
-    const status = await this.waitForStatusChange(
-      messengerAccountId,
-      ["ready", "wait_password"],
-      5,
-      1000,
-    );
-    if (!status) {
-      throw new Error("Failed to verify code status");
-    }
+    return this.waitUntilAuthStates(messengerAccountId, [
+      "ready",
+      "wait_password",
+    ]);
   },
 
   async sendTelegramPassword(
     password: string,
     messengerAccountId: string,
-  ): Promise<void> {
+  ): Promise<SessionState> {
     await httpClient.post("/auth/telegram/password", {
       password,
       messenger_account_id: messengerAccountId,
     });
-    await this.waitForStatusChange(messengerAccountId, "ready", 5, 1000);
+    return this.waitUntilAuthStates(messengerAccountId, ["ready"]);
   },
 
   async getSessionStatusForMessenger(
@@ -149,27 +222,13 @@ export const authService = {
     );
   },
 
-  async waitForStatusChange(
+  async waitForTelegramSessionStep(
     messengerAccountId: string,
-    expectedStatus: string | string[],
-    maxAttempts: number = 5,
-    delayMs: number = 1000,
-  ): Promise<SessionState | null> {
-    const expectedStatuses = Array.isArray(expectedStatus)
-      ? expectedStatus
-      : [expectedStatus];
-
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-
-      const status =
-        await this.getSessionStatusForMessenger(messengerAccountId);
-      if (expectedStatuses.includes(status.auth_state)) {
-        return status;
-      }
-    }
-
-    return null;
+  ): Promise<SessionState> {
+    return this.waitUntilAuthStates(
+      messengerAccountId,
+      ["inited", "wait_phone", "wait_code", "wait_password", "ready"],
+    );
   },
 
   clearTelegramConnectWip(): void {
@@ -205,6 +264,29 @@ export const authService = {
     }
 
     return true;
+  },
+
+  async restoreSession(): Promise<boolean> {
+    const token = localStorage.getItem("jwt_token");
+    if (token && !isTokenExpired(token)) {
+      return true;
+    }
+
+    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+    if (!refreshToken) {
+      if (token) {
+        localStorage.removeItem("jwt_token");
+      }
+      return false;
+    }
+
+    try {
+      await this.refreshTokens();
+      return true;
+    } catch {
+      this.clearSession();
+      return false;
+    }
   },
 
   getCurrentUserId(): string | null {

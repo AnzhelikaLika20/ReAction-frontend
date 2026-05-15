@@ -81,7 +81,7 @@ export default function ConnectTelegram() {
         }
 
         setMessengerAccountId(wip);
-        const status = await authService.getSessionStatusForMessenger(wip);
+        const status = await authService.waitForTelegramSessionStep(wip);
 
         if (status.phone) {
           setPhone(status.phone);
@@ -112,59 +112,45 @@ export default function ConnectTelegram() {
         setStep("phone");
       }
     })();
-  }, [navigate, checkAuth, persistWip, searchParams]);
+  }, [navigate, checkAuth, persistWip]);
 
   useEffect(() => {
     persistWip(messengerAccountId);
   }, [messengerAccountId, persistWip]);
-
-  const recoverStatus = async (mid: string | null) => {
-    if (!mid) return null;
-    return authService.getSessionStatusForMessenger(mid).catch(() => null);
-  };
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
+    let activeMid: string | null = messengerAccountId;
+
     try {
-      let mid = messengerAccountId;
-      if (!mid) {
-        mid = await authService.initTelegramAuth(phone);
-        setMessengerAccountId(mid);
-        await new Promise<void>((r) => setTimeout(r, 500));
-        await authService.waitForStatusChange(mid, "wait_phone", 8, 500);
+      if (!activeMid) {
+        activeMid = await authService.initTelegramAuth(phone);
+        setMessengerAccountId(activeMid);
       }
 
-      await authService.sendPhone(phone, mid);
-      setStep("code");
-    } catch (err) {
-      const status = await recoverStatus(messengerAccountId);
-      if (status?.auth_state === "ready") {
+      const status = await authService.sendPhone(phone, activeMid);
+
+      if (status.auth_state === "wait_code") {
+        setStep("code");
+      } else if (status.auth_state === "wait_password") {
+        setStep("password");
+      } else if (status.auth_state === "ready") {
         persistWip(null);
         await checkAuth();
         navigate("/settings");
-        return;
+      } else {
+        setError("Подключение не завершилось. Обновите страницу.");
       }
-      if (status?.auth_state === "wait_code") {
-        setStep("code");
-        return;
-      }
-      if (status?.auth_state === "wait_password") {
-        setStep("password");
-        return;
-      }
+    } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         startNewAccountFlow();
         return;
       }
-      setError(
-        err instanceof Error && err.message
-          ? err.message
-          : "Ошибка отправки номера телефона",
-      );
       console.error(err);
+      setError("Не удалось завершить подключение. Обновите страницу.");
     } finally {
       setLoading(false);
     }
@@ -181,10 +167,7 @@ export default function ConnectTelegram() {
     setLoading(true);
 
     try {
-      await authService.sendCode(code, messengerAccountId);
-      await new Promise<void>((r) => setTimeout(r, 1500));
-      const status =
-        await authService.getSessionStatusForMessenger(messengerAccountId);
+      const status = await authService.sendCode(code, messengerAccountId);
 
       if (status.auth_state === "wait_password") {
         setStep("password");
@@ -192,6 +175,8 @@ export default function ConnectTelegram() {
         persistWip(null);
         await checkAuth();
         navigate("/settings");
+      } else {
+        setError("Подключение не завершилось. Обновите страницу.");
       }
     } catch (err) {
       setError("Неверный код");
@@ -212,10 +197,17 @@ export default function ConnectTelegram() {
     setLoading(true);
 
     try {
-      await authService.sendTelegramPassword(password, messengerAccountId);
-      persistWip(null);
-      await checkAuth();
-      navigate("/settings");
+      const s = await authService.sendTelegramPassword(
+        password,
+        messengerAccountId,
+      );
+      if (s.auth_state === "ready") {
+        persistWip(null);
+        await checkAuth();
+        navigate("/settings");
+      } else {
+        setError("Подключение не завершилось. Обновите страницу.");
+      }
     } catch (err) {
       setError("Неверный пароль");
       console.error(err);
@@ -235,7 +227,7 @@ export default function ConnectTelegram() {
   }
 
   return (
-    <div className={`${styles.container} connectTelegramContainer}`}>
+    <div className={`${styles.container} connectTelegramContainer`}>
       <div className={styles.card}>
         <div className={styles.logo}>
           <h1 className={styles.logoText}>Re:Action</h1>

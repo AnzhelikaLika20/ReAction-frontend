@@ -46,6 +46,9 @@ export default function Auth() {
         navigate("/");
       }
     } catch (err) {
+      if (mode === "login" && err instanceof ApiError && err.status === 401) {
+        authService.clearSession();
+      }
       if (mode === "register") {
         if (err instanceof ApiError && err.status === 409) {
           setError("Этот email уже зарегистрирован.");

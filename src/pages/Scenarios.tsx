@@ -263,7 +263,7 @@ export default function Scenarios() {
                 </div>
 
                 <div className={styles.viewField}>
-                  <div className={styles.viewLabel}>Шаблон заголовка</div>
+                  <div className={styles.viewLabel}>Заголовок напоминания</div>
                   <div className={styles.viewValue}>
                     {currentScenario.reminder_title_template}
                   </div>
@@ -363,7 +363,7 @@ export default function Scenarios() {
                     htmlFor="reminder_title_template"
                     className={styles.label}
                   >
-                    Шаблон заголовка *
+                    Заголовок напоминания *
                   </label>
                   <input
                     id="reminder_title_template"
@@ -376,7 +376,7 @@ export default function Scenarios() {
                         reminder_title_template: e.target.value,
                       })
                     }
-                    placeholder="Встреча: {'{topic}'}"
+                    placeholder="Встреча с клиентом"
                     required
                   />
                 </div>
@@ -386,7 +386,7 @@ export default function Scenarios() {
                     htmlFor="reminder_description_template"
                     className={styles.label}
                   >
-                    Шаблон описания
+                    Описание напоминания
                   </label>
                   <textarea
                     id="reminder_description_template"

@@ -25,6 +25,8 @@ export default function Chats() {
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [chats, setChats] = useState<Chat[]>([]);
   const [chatsLoading, setChatsLoading] = useState(false);
+  const [searchChats, setSearchChats] = useState<Chat[] | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [analyzeAll, setAnalyzeAll] = useState(false);
@@ -114,10 +116,47 @@ export default function Chats() {
     };
   }, [selectedAccountId, accountsLoading, canLoadTelegramChats]);
 
+  const isSearchActive = Boolean(searchQuery.trim());
+
+  useEffect(() => {
+    if (!selectedAccountId || !canLoadTelegramChats) {
+      setSearchChats(null);
+      setSearchLoading(false);
+      return;
+    }
+
+    const query = searchQuery.trim();
+    if (!query) {
+      setSearchChats(null);
+      setSearchLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const data = await chatService.search(selectedAccountId, query);
+        if (!cancelled) setSearchChats(data);
+      } catch (error) {
+        console.error("Failed to search chats:", error);
+        if (!cancelled) setSearchChats([]);
+      } finally {
+        if (!cancelled) setSearchLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [searchQuery, selectedAccountId, canLoadTelegramChats]);
+
   const onAccountChange = (id: string) => {
     setSelectedAccountId(id);
     sessionStorage.setItem(STORAGE_KEY, id);
     setSearchQuery("");
+    setSearchChats(null);
     setHasChanges(false);
   };
 
@@ -130,18 +169,31 @@ export default function Chats() {
 
   const handleToggleChat = (chatId: number, checked: boolean) => {
     if (!canLoadTelegramChats || chatsLoading) return;
-    setChats(
-      chats.map((chat) =>
-        chat.id === chatId ? { ...chat, is_selected: checked } : chat,
-      ),
-    );
-    setHasChanges(true);
 
-    const updatedChats = chats.map((chat) =>
-      chat.id === chatId ? { ...chat, is_selected: checked } : chat,
-    );
-    const allSelected = updatedChats.every((chat) => chat.is_selected);
-    setAnalyzeAll(allSelected);
+    const patchList = (list: Chat[]) =>
+      list.map((chat) =>
+        chat.id === chatId ? { ...chat, is_selected: checked } : chat,
+      );
+
+    setChats((prev) => {
+      if (prev.some((chat) => chat.id === chatId)) {
+        const next = patchList(prev);
+        setAnalyzeAll(next.length > 0 && next.every((chat) => chat.is_selected));
+        return next;
+      }
+      const fromSearch = searchChats?.find((chat) => chat.id === chatId);
+      if (fromSearch) {
+        const next = [...prev, { ...fromSearch, is_selected: checked }];
+        setAnalyzeAll(next.length > 0 && next.every((chat) => chat.is_selected));
+        return next;
+      }
+      return prev;
+    });
+
+    if (searchChats) {
+      setSearchChats((prev) => (prev ? patchList(prev) : prev));
+    }
+    setHasChanges(true);
   };
 
   const handleSave = async () => {
@@ -203,24 +255,21 @@ export default function Chats() {
     return `${count} сообщений`;
   };
 
-  const filteredChats = useMemo(() => {
-    if (!searchQuery.trim()) return chats;
-    const query = searchQuery.toLowerCase();
-    return chats.filter((chat) => chat.name.toLowerCase().includes(query));
-  }, [chats, searchQuery]);
+  const displayChats = isSearchActive ? (searchChats ?? []) : chats;
+  const listLoading = isSearchActive ? searchLoading : chatsLoading;
 
   const popularChats = useMemo(() => {
-    if (searchQuery.trim()) return [];
-    return [...filteredChats]
+    if (isSearchActive) return [];
+    return [...chats]
       .sort((a, b) => (b.message_count || 0) - (a.message_count || 0))
       .slice(0, 5);
-  }, [filteredChats, searchQuery]);
+  }, [chats, isSearchActive]);
 
   const otherChats = useMemo(() => {
-    if (searchQuery.trim()) return filteredChats;
+    if (isSearchActive) return displayChats;
     const popularIds = new Set(popularChats.map((c) => c.id));
-    return filteredChats.filter((chat) => !popularIds.has(chat.id));
-  }, [filteredChats, popularChats, searchQuery]);
+    return chats.filter((chat) => !popularIds.has(chat.id));
+  }, [chats, displayChats, popularChats, isSearchActive]);
 
   return (
     <div className={styles.container}>
@@ -300,7 +349,7 @@ export default function Chats() {
             placeholder="Поиск по названию чата..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            disabled={!canLoadTelegramChats || chatsLoading}
+            disabled={!canLoadTelegramChats || listLoading}
           />
         </div>
 
@@ -315,7 +364,10 @@ export default function Chats() {
               className={styles.switchInput}
               checked={analyzeAll}
               disabled={
-                !canLoadTelegramChats || chatsLoading || chats.length === 0
+                !canLoadTelegramChats ||
+                listLoading ||
+                chats.length === 0 ||
+                isSearchActive
               }
               onChange={(e) => handleToggleAll(e.target.checked)}
             />
@@ -324,13 +376,15 @@ export default function Chats() {
         </div>
       </div>
 
-      {chatsLoading && canLoadTelegramChats && (
-        <p className={styles.accountHint}>Загрузка чатов...</p>
+      {listLoading && canLoadTelegramChats && (
+        <p className={styles.accountHint}>
+          {isSearchActive ? "Поиск чатов..." : "Загрузка чатов..."}
+        </p>
       )}
 
-      {canLoadTelegramChats && accounts.length > 0 && !chatsLoading && (
+      {canLoadTelegramChats && accounts.length > 0 && !listLoading && (
         <>
-          {chats.length === 0 ? (
+          {!isSearchActive && chats.length === 0 ? (
             <div className={styles.empty}>
               <div className={styles.emptyTitle}>Нет доступных чатов</div>
               <p>
@@ -338,14 +392,14 @@ export default function Chats() {
                 обновите страницу.
               </p>
             </div>
-          ) : filteredChats.length === 0 ? (
+          ) : displayChats.length === 0 ? (
             <div className={styles.empty}>
               <div className={styles.emptyTitle}>Ничего не найдено</div>
               <p>Попробуйте изменить поисковый запрос</p>
             </div>
           ) : (
             <>
-              {!searchQuery && popularChats.length > 0 && (
+              {!isSearchActive && popularChats.length > 0 && (
                 <div className={styles.section}>
                   <h2 className={styles.sectionTitle}>Популярные чаты</h2>
                   <div className={styles.chatList}>
@@ -355,7 +409,7 @@ export default function Chats() {
                           type="checkbox"
                           className={styles.checkbox}
                           checked={chat.is_selected}
-                          disabled={!canLoadTelegramChats || chatsLoading}
+                          disabled={!canLoadTelegramChats || listLoading}
                           onChange={(e) =>
                             handleToggleChat(chat.id, e.target.checked)
                           }
@@ -392,7 +446,7 @@ export default function Chats() {
               {otherChats.length > 0 && (
                 <div className={styles.section}>
                   <h2 className={styles.sectionTitle}>
-                    {searchQuery ? "Результаты поиска" : "Все чаты"}
+                    {isSearchActive ? "Результаты поиска" : "Все чаты"}
                   </h2>
                   <div className={styles.chatList}>
                     {otherChats.map((chat) => (
@@ -401,7 +455,7 @@ export default function Chats() {
                           type="checkbox"
                           className={styles.checkbox}
                           checked={chat.is_selected}
-                          disabled={!canLoadTelegramChats || chatsLoading}
+                          disabled={!canLoadTelegramChats || listLoading}
                           onChange={(e) =>
                             handleToggleChat(chat.id, e.target.checked)
                           }
@@ -443,7 +497,7 @@ export default function Chats() {
                     saveLoading ||
                     !hasChanges ||
                     !canLoadTelegramChats ||
-                    chatsLoading
+                    listLoading
                   }
                 >
                   {saveLoading ? "Сохранение..." : "Сохранить изменения"}
